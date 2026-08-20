@@ -1,0 +1,20 @@
+.DS_Store
+.idea/
+.vscode/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Third-party/raw data should not be committed.
+data/raw/
+data/deeplesion/
+data/dlt/
+outputs_deeplesion_longitudinal/
+
+# Large trained model artifacts.
+*.pt
+*.pth
+*.ckpt
+*.log

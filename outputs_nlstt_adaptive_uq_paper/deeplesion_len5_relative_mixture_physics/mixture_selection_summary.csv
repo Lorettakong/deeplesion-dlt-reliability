@@ -1,0 +1,9 @@
+m,variant,selected_physics,fraction_mean,fraction_std
+1,mixture_physics,exponential,1.0,
+1,mixture_physics,gompertz,1.0,
+1,mixture_physics,logistic,1.0,
+2,mixture_physics,gompertz,1.0,0.0
+2,mixture_physics,logistic,1.0,
+3,mixture_physics,gompertz,1.0,0.0
+3,mixture_physics,logistic,1.0,
+4,mixture_physics,gompertz,1.0,0.0

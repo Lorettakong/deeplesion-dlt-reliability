@@ -1,0 +1,13 @@
+Method,Target magnitude,analysis,n_test_trajectories,covered_trajectories,PICP,PICP Clopper-Pearson 95% CI,MPIW,MAE
+Deterministic,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8381,0.2607
+Deterministic,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.8381,0.4216
+Deterministic,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8381,0.3963
+MC Dropout,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.6589,0.2322
+MC Dropout,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,3.2360,0.3794
+MC Dropout,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,3.3941,0.4076
+Deep Ensemble,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.7336,0.2492
+Deep Ensemble,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.8808,0.3749
+Deep Ensemble,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8417,0.4124
+Residual Gaussian,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.9323,0.2434
+Residual Gaussian,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.9323,0.3518
+Residual Gaussian,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.9323,0.4193

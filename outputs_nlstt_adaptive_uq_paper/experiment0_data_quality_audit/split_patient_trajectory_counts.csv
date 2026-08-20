@@ -1,0 +1,4 @@
+split,patients,trajectories,purpose
+train,84,140,Model fitting
+validation,19,27,Model selection and calibration
+test,26,38,Final evaluation only

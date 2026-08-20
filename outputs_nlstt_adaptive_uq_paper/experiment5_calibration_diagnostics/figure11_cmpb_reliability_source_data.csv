@@ -1,0 +1,25 @@
+"method","nominal","empirical"
+"Deterministic",0.5,0.771929824561403
+"Deterministic",0.6,0.868421052631579
+"Deterministic",0.7,0.921052631578947
+"Deterministic",0.8,0.93859649122807
+"Deterministic",0.9,1
+"Deterministic",0.95,1
+"MC Dropout",0.5,0.745614035087719
+"MC Dropout",0.6,0.868421052631579
+"MC Dropout",0.7,0.894736842105263
+"MC Dropout",0.8,0.956140350877193
+"MC Dropout",0.9,0.973684210526316
+"MC Dropout",0.95,1
+"Deep Ensemble",0.5,0.789473684210526
+"Deep Ensemble",0.6,0.842105263157895
+"Deep Ensemble",0.7,0.894736842105263
+"Deep Ensemble",0.8,0.973684210526316
+"Deep Ensemble",0.9,0.991228070175439
+"Deep Ensemble",0.95,1
+"Residual Gaussian",0.5,0.798245614035088
+"Residual Gaussian",0.6,0.868421052631579
+"Residual Gaussian",0.7,0.93859649122807
+"Residual Gaussian",0.8,0.964912280701754
+"Residual Gaussian",0.9,0.991228070175439
+"Residual Gaussian",0.95,1

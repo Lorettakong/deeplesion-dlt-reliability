@@ -1,0 +1,5 @@
+m,selected_method_id,selected_method,selection_metric,validation_rmse,validation_rmse_ci95_half
+1,deterministic,Deterministic,validation_rmse,1.051213930932245,0.0002906698946943824
+2,mc_dropout,MC Dropout,validation_rmse,0.835374882939368,0.0015745547749219362
+3,deep_ensemble,Deep Ensemble,validation_rmse,0.755378961105953,0.0014604874339144167
+4,mc_dropout,MC Dropout,validation_rmse,0.5808366745864368,0.006963919942909334

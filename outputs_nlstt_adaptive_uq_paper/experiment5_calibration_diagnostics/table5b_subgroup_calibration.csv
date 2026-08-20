@@ -1,0 +1,13 @@
+Method,Subgroup,analysis,n_test_trajectories,covered_trajectories,PICP,PICP Clopper-Pearson 95% CI,MPIW,MAE
+Deterministic,abdomen/liver,exploratory,13,13,1.0000,0.7529-1.0000,2.8381,0.2718
+Deterministic,chest/lung,exploratory,17,17,1.0000,0.8049-1.0000,2.8381,0.3809
+Deterministic,other,exploratory,8,8,1.0000,0.6306-1.0000,2.8381,0.4488
+MC Dropout,abdomen/liver,exploratory,13,13,1.0000,0.7529-1.0000,3.0990,0.2476
+MC Dropout,chest/lung,exploratory,17,17,1.0000,0.8049-1.0000,3.2153,0.3711
+MC Dropout,other,exploratory,8,8,1.0000,0.6306-1.0000,2.8218,0.4178
+Deep Ensemble,abdomen/liver,exploratory,13,13,1.0000,0.7529-1.0000,2.7934,0.2591
+Deep Ensemble,chest/lung,exploratory,17,17,1.0000,0.8049-1.0000,2.8621,0.3726
+Deep Ensemble,other,exploratory,8,8,1.0000,0.6306-1.0000,2.7597,0.4245
+Residual Gaussian,abdomen/liver,exploratory,13,13,1.0000,0.7529-1.0000,2.9323,0.2527
+Residual Gaussian,chest/lung,exploratory,17,17,1.0000,0.8049-1.0000,2.9323,0.3590
+Residual Gaussian,other,exploratory,8,8,1.0000,0.6306-1.0000,2.9323,0.4311

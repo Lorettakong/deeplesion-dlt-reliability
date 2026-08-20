@@ -1,0 +1,5 @@
+window_setting,n_windows,n_original_trajectories,n_patients,n_test_windows
+first5,205,205,129,38
+last5,205,205,129,38
+sliding5,560,205,129,95
+random5,205,205,129,38

@@ -1,0 +1,25 @@
+"panel","metric","item","value"
+"A","candidate trajectory length","1",0
+"A","candidate trajectory length","2",1300
+"A","candidate trajectory length","3",410
+"A","candidate trajectory length","4",195
+"A","candidate trajectory length","5",75
+"A","candidate trajectory length","6-8",95
+"A","candidate trajectory length","9-12",25
+"A","candidate trajectory length","13-20",12
+"A","candidate trajectory length",">20",4
+"B","body-site distribution","Chest/lung",90
+"B","body-site distribution","Abdomen/liver",70
+"B","body-site distribution","Other",45
+"C","patient-level split - patients","Train",84
+"C","patient-level split - patients","Validation",19
+"C","patient-level split - patients","Test",26
+"C","patient-level split - trajectories","Train",140
+"C","patient-level split - trajectories","Validation",27
+"C","patient-level split - trajectories","Test",38
+"D","IQR outlier rate (%)","All V(t)",15
+"D","IQR outlier rate (%)","All log V(t)",0.9
+"D","IQR outlier rate (%)","All relative log V",8.4
+"D","IQR outlier rate (%)","T4 V(t)",13.7
+"D","IQR outlier rate (%)","T4 log V(t)",1
+"D","IQR outlier rate (%)","T4 relative log V",2.4

@@ -1,0 +1,7 @@
+body_region_group,trajectories,percent
+chest_or_lung,90,43.9
+abdomen_or_liver,70,34.1
+other_or_unknown,19,9.3
+lymphatic,14,6.8
+pelvis,11,5.4
+soft_tissue_or_breast,1,0.5

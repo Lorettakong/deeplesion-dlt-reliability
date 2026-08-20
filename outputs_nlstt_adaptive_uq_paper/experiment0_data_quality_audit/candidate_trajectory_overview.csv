@@ -1,0 +1,7 @@
+criterion,trajectories
+All DLT connected components,2117
+Patient-consistent components,2117
+Trajectory length >= 3,811
+Trajectory length = 4,195
+Trajectory length >= 5,205
+Trajectory length >= 8,43

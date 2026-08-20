@@ -1,0 +1,5 @@
+Item,Value,Interpretation
+Explicit scan date columns,None found,Real calendar time is unavailable in the current DeepLesion-DLT table
+Trajectories with proxy time different from visit index,64/205,Only a subset can test proxy-time sensitivity
+Trajectories with duplicated study_id among first five nodes,46/205,DLT components may contain multiple lesion nodes from the same study; this is not a true date interval
+Mean max absolute difference between proxy time and visit index,0.2374,Proxy time differs mildly from visit index on average

@@ -1,0 +1,3 @@
+Fixed lambda,RMSE improvement,ECE improvement,NLL improvement,Mean residual ratio,Interpretation
+lambda=1,3/4,3/4,4/4,0.062,Main setting; smaller residual with more stable calibration
+lambda=10,4/4,2/4,3/4,0.039,"Stronger residual reduction, but calibration/loss behavior is less uniform"

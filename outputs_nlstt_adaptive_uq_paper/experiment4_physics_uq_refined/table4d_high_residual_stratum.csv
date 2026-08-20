@@ -1,0 +1,5 @@
+m,High-residual RMSE No Regularization,High-residual RMSE regularized,High-residual NLL No Regularization,High-residual NLL regularized,High-residual residual No Regularization,High-residual residual regularized
+1,0.8663,1.0023,1.5457,1.5953,0.0699,0.0057
+2,0.8469,0.7613,1.2534,1.1666,0.6364,0.0139
+3,0.6819,0.4943,1.0746,0.8956,0.8140,0.0424
+4,0.4402,0.4420,0.8039,0.7972,0.8331,0.0879
