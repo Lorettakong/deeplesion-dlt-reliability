@@ -23,6 +23,12 @@ behavior, statistical uncertainty, and trajectory regularization diagnostics.
 │   ├── metrics.py                     # RMSE, MAE, PICP, MPIW, ECE, NLL, calibration
 │   ├── physics.py                     # Gompertz-inspired trajectory regularization
 │   └── mechanistic_baselines.py       # Traditional longitudinal baselines
+├── data_processing/                   # Reviewer-facing map for cohort construction/QC code
+├── models/                            # Reviewer-facing map for prediction/UQ model code
+├── experiments/                       # Reviewer-facing map for Exp0-Exp5 entry points
+├── calibration/                       # Reviewer-facing map for calibration and UQ metrics
+├── statistics/                        # Reviewer-facing map for bootstrap/CI analyses
+├── figures/                           # Reviewer-facing map for manuscript figure regeneration
 ├── scripts/                           # Experiment entry points
 ├── outputs_nlstt_adaptive_uq_paper/   # Manuscript tables, source CSVs, and polished figures
 ├── data/README.md                     # Data access and expected input files
