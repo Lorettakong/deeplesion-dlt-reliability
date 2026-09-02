@@ -12,14 +12,8 @@ import numpy as np
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment0_data_quality_audit"
-COHORT = (
-    ROOT
-    / "outputs_nlstt_adaptive_uq_paper"
-    / "deeplesion_len5_relative_main205"
-    / "cohort_deeplesion_len5_long.csv"
-)
+OUT = Path("outputs_nlstt_adaptive_uq_paper/experiment0_data_quality_audit")
+COHORT = Path("outputs_nlstt_adaptive_uq_paper/deeplesion_len5_relative_main205/cohort_deeplesion_len5_long.csv")
 
 
 def savefig(path: Path) -> None:
@@ -80,7 +74,7 @@ def main() -> None:
     ax.bar(x - width / 2, split["patients"], width, label="Patients", color="#4C78A8")
     ax.bar(x + width / 2, split["trajectories"], width, label="Trajectories", color="#F58518")
     ax.set_xticks(x)
-    ax.set_xticklabels(["Train", "Validation", "Test"])
+    ax.set_xticklabels(["Development", "Calibration", "Test"])
     ax.set_ylabel("Count")
     ax.set_title("C. Patient-level split summary")
     ax.legend(frameon=False)
@@ -159,7 +153,7 @@ def main() -> None:
     ax.bar(x - width / 2, split["patients"], width, label="Patients", color="#4C78A8")
     ax.bar(x + width / 2, split["trajectories"], width, label="Trajectories", color="#F58518")
     ax.set_xticks(x)
-    ax.set_xticklabels(["Train", "Validation", "Test"])
+    ax.set_xticklabels(["Development", "Calibration", "Test"])
     ax.set_ylabel("Count")
     ax.set_title("C. Patient-level split")
     ax.legend(frameon=False, fontsize=8)

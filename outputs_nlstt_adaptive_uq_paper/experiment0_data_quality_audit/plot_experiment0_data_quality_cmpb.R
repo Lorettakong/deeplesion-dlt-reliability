@@ -36,7 +36,7 @@ body_site_counts$percent <- 100 * body_site_counts$trajectories / sum(body_site_
 body_site_counts$label <- sprintf("%d (%.1f%%)", body_site_counts$trajectories, body_site_counts$percent)
 
 split_counts <- data.frame(
-  set = factor(c("Train", "Validation", "Test"), levels = c("Train", "Validation", "Test")),
+  set = factor(c("Development", "Calibration", "Test"), levels = c("Development", "Calibration", "Test")),
   Patients = c(84, 19, 26),
   Trajectories = c(140, 27, 38)
 )

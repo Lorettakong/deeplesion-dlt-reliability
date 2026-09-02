@@ -121,6 +121,38 @@ def split_trajectory_ids_by_patient(
     return SplitIds(train=sorted(train), val=sorted(val), test=sorted(test))
 
 
+def patient_group_kfold_ids(
+    df: pd.DataFrame,
+    ids: list[str],
+    n_splits: int = 5,
+    seed: int = 0,
+) -> list[tuple[list[str], list[str]]]:
+    """Patient-grouped folds for development/model selection only.
+
+    Every patient is assigned to exactly one validation fold, so trajectories
+    from the same patient can never occur on both sides of a fold.
+    """
+    summary = (
+        df[df["trajectory_id"].astype(str).isin([str(x) for x in ids])]
+        .groupby("trajectory_id", as_index=False)
+        .agg(patient_id=("patient_id", "first"))
+    )
+    patients = summary["patient_id"].astype(str).drop_duplicates().to_numpy(dtype=object)
+    if len(patients) < n_splits:
+        raise ValueError(f"Need at least {n_splits} development patients, found {len(patients)}.")
+    rng = np.random.default_rng(seed)
+    rng.shuffle(patients)
+    patient_folds = np.array_split(patients, n_splits)
+    folds: list[tuple[list[str], list[str]]] = []
+    for fold_patients in patient_folds:
+        val_patients = set(str(x) for x in fold_patients.tolist())
+        is_val = summary["patient_id"].astype(str).isin(val_patients)
+        train_ids = summary.loc[~is_val, "trajectory_id"].astype(str).tolist()
+        val_ids = summary.loc[is_val, "trajectory_id"].astype(str).tolist()
+        folds.append((sorted(train_ids), sorted(val_ids)))
+    return folds
+
+
 def make_prediction_task(df: pd.DataFrame, ids: list[str], m: int) -> pd.DataFrame:
     """Create sparse prediction rows.
 
@@ -302,6 +334,8 @@ def load_deeplesion_len5_long(
     path: Path = DEEPLESION_TRAJ_LEN5_CSV,
     labels_path: Path | None = DEEPLESION_TRAJ_LABELS_CSV,
     relative_log: bool = False,
+    cohort_mode: str = "current",
+    measurement_proxy: str = "ellipsoid_volume",
 ) -> pd.DataFrame:
     """Load DLT-derived same-lesion trajectories and keep the first five real follow-ups.
 
@@ -309,6 +343,14 @@ def load_deeplesion_len5_long(
     segmentations. We therefore model an ellipsoid volume proxy:
     V = pi / 6 * long_axis * short_axis^2, converted from mm^3 to cm^3.
     """
+    path = Path(path)
+    if cohort_mode == "strict_unambiguous" and not path.stem.endswith("_strict"):
+        path = path.with_name(f"{path.stem}_strict{path.suffix}")
+    if cohort_mode == "strict_unambiguous" and not path.exists():
+        raise FileNotFoundError(
+            f"Strict cohort file not found: {path}. Generate it first with "
+            "`python prepare_deeplesion_longitudinal.py --ambiguity-policy exclude`."
+        )
     df = pd.read_csv(path)
     required = {
         "trajectory_id",
@@ -322,14 +364,35 @@ def load_deeplesion_len5_long(
     if missing:
         raise ValueError(f"DeepLesion trajectory file is missing columns: {sorted(missing)}")
 
+    if cohort_mode not in {"current", "strict_unambiguous"}:
+        raise ValueError("cohort_mode must be 'current' or 'strict_unambiguous'.")
     df = df.copy()
     df["trajectory_id"] = df["trajectory_id"].astype(str)
     df["followup_index"] = df["followup_index"].astype(int)
     df = df.sort_values(["trajectory_id", "followup_index"])
     df = df[df["followup_index"] < 5].copy()
 
-    volume_mm3 = math.pi / 6.0 * df["long_axis_mm"].astype(float) * (df["short_axis_mm"].astype(float) ** 2)
-    df["V_obs_cm3"] = np.clip(volume_mm3 / 1000.0, 1e-8, None)
+    if cohort_mode == "strict_unambiguous" and "ambiguity_policy" in df.columns:
+        if not df["ambiguity_policy"].astype(str).eq("exclude").all():
+            raise ValueError("Strict cohort file contains rows not constructed with ambiguity_policy='exclude'.")
+    df["cohort_construction"] = cohort_mode
+
+    long_axis = df["long_axis_mm"].astype(float)
+    short_axis = df["short_axis_mm"].astype(float)
+    if measurement_proxy == "ellipsoid_volume":
+        measurement = (math.pi / 6.0) * long_axis * short_axis**2 / 1000.0
+        proxy_label = "pi_over_6_times_long_times_short_squared_cm3"
+    elif measurement_proxy == "recist_area":
+        measurement = long_axis * short_axis
+        proxy_label = "long_times_short_mm2"
+    elif measurement_proxy == "long_axis":
+        measurement = long_axis
+        proxy_label = "recist_long_axis_mm"
+    else:
+        raise ValueError("measurement_proxy must be ellipsoid_volume, recist_area, or long_axis.")
+    df["V_obs_cm3"] = np.clip(measurement, 1e-8, None)
+    df["measurement_proxy"] = measurement_proxy
+    df["measurement_proxy_definition"] = proxy_label
     df["logV"] = np.log(df["V_obs_cm3"])
     df["raw_logV"] = df["logV"]
     df["t_rel"] = df["followup_index"].astype(float)
@@ -372,7 +435,7 @@ def load_deeplesion_len5_long(
         df["logV"] = df["raw_logV"] - df["logV_baseline"]
         df["V_obs_cm3_raw"] = df["V_obs_cm3"]
         df["V_obs_cm3"] = np.exp(df["logV"])
-        df["target_transform"] = "relative_log_v_over_v0"
+        df["target_transform"] = f"relative_log_{measurement_proxy}_over_baseline"
     else:
         df["logV_baseline"] = 0.0
         df["V_obs_cm3_raw"] = df["V_obs_cm3"]
@@ -381,7 +444,15 @@ def load_deeplesion_len5_long(
 
 
 def make_deeplesion_prediction_task(df: pd.DataFrame, ids: list[str], m: int) -> pd.DataFrame:
-    """Use the first m visits of a five-visit DLT trajectory to predict visit 5."""
+    """Use the most recent m pre-target visits to predict the fixed T4 target.
+
+    For a five-visit trajectory (T0, ..., T4), the forecast horizon is fixed at
+    T4 and the observed history expands backwards from the last available
+    pre-target visit: m=1 uses T3, m=2 uses (T2, T3), m=3 uses
+    (T1, T2, T3), and m=4 uses (T0, T1, T2, T3).  This isolates the
+    incremental information supplied by a longer recent history while keeping
+    both the target and the final observed visit fixed.
+    """
     if m not in {1, 2, 3, 4}:
         raise ValueError("DeepLesion len5 tasks support m in {1, 2, 3, 4}.")
     rows = []
@@ -390,7 +461,7 @@ def make_deeplesion_prediction_task(df: pd.DataFrame, ids: list[str], m: int) ->
         group = group.sort_values("t_rel")
         if len(group) < 5:
             continue
-        obs = group.iloc[:m]
+        obs = group.iloc[4 - m : 4]
         target = group.iloc[4]
         rows.append(
             {
@@ -398,6 +469,8 @@ def make_deeplesion_prediction_task(df: pd.DataFrame, ids: list[str], m: int) ->
                 "patient_id": str(group["patient_id"].iloc[0]),
                 "growth_class": group["growth_class"].iloc[0],
                 "m": m,
+                "forecast_mode": "fixed_horizon_recent_history",
+                "individualized_history_available": True,
                 "total_nodes": 5,
                 "t_obs": obs["t_rel"].to_numpy(float).tolist(),
                 "logv_obs": obs["logV"].to_numpy(float).tolist(),

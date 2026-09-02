@@ -6,22 +6,13 @@ import numpy as np
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment0_data_quality_audit"
-SUMMARY = ROOT / "outputs_deeplesion_longitudinal" / "deeplesion_trajectory_summary.csv"
-LABELS = ROOT / "outputs_deeplesion_longitudinal" / "deeplesion_len5_trajectory_labels.csv"
-COHORT = (
-    ROOT
-    / "outputs_nlstt_adaptive_uq_paper"
-    / "deeplesion_len5_relative_main205"
-    / "cohort_deeplesion_len5_long.csv"
-)
-SPLIT_COUNTS = (
-    ROOT
-    / "outputs_nlstt_adaptive_uq_paper"
-    / "deeplesion_len5_relative_main205"
-    / "split_patient_counts.csv"
-)
+OUT = Path("outputs_nlstt_adaptive_uq_paper/experiment0_data_quality_audit")
+SUMMARY = Path("outputs_deeplesion_longitudinal/deeplesion_trajectory_summary.csv")
+STRICT_SUMMARY = Path("outputs_deeplesion_longitudinal/deeplesion_trajectory_summary_strict.csv")
+LABELS = Path("outputs_deeplesion_longitudinal/deeplesion_len5_trajectory_labels.csv")
+COHORT = Path("outputs_nlstt_adaptive_uq_paper/deeplesion_len5_relative_main205/cohort_deeplesion_len5_long.csv")
+SPLIT_COUNTS = Path("outputs_nlstt_adaptive_uq_paper/deeplesion_len5_relative_main205/split_patient_counts.csv")
+GRAPH_AUDIT = Path("outputs_deeplesion_longitudinal/deeplesion_component_graph_audit.csv")
 
 
 def q(series: pd.Series) -> dict[str, float]:
@@ -69,9 +60,11 @@ def markdown_table(df: pd.DataFrame) -> str:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     summary = pd.read_csv(SUMMARY)
+    strict_summary = pd.read_csv(STRICT_SUMMARY) if STRICT_SUMMARY.exists() else pd.DataFrame()
     labels = pd.read_csv(LABELS)
     cohort = pd.read_csv(COHORT)
     split_counts = pd.read_csv(SPLIT_COUNTS)
+    graph_audit = pd.read_csv(GRAPH_AUDIT) if GRAPH_AUDIT.exists() else pd.DataFrame()
 
     # Candidate graph-component audit.
     candidate_overview = pd.DataFrame(
@@ -85,6 +78,31 @@ def main() -> None:
         ]
     )
     candidate_overview.to_csv(OUT / "candidate_trajectory_overview.csv", index=False)
+
+    if not graph_audit.empty:
+        graph_summary = pd.DataFrame(
+            [
+                {"quantity": "Connected components", "value": len(graph_audit)},
+                {"quantity": "Components with graph/study ambiguity", "value": int(graph_audit["ambiguous_component"].sum())},
+                {"quantity": "Branching nodes (degree > 2)", "value": int(graph_audit["branching_node_count_degree_gt2"].sum())},
+                {"quantity": "Repeated pair annotations", "value": int(graph_audit["duplicate_pair_annotations"].sum())},
+                {"quantity": "Studies with multiple candidate nodes", "value": int(graph_audit["studies_with_multiple_candidate_nodes"].sum())},
+                {"quantity": "Trajectories excluded by future-size/smoothness rules", "value": 0},
+                {"quantity": "Strict-cohort components excluded for ambiguity", "value": int(strict_summary.get("excluded_strict_ambiguity", pd.Series(dtype=int)).sum()) if not strict_summary.empty else "rerun strict construction"},
+            ]
+        )
+        graph_summary.to_csv(OUT / "lesion_tracking_graph_audit_summary.csv", index=False)
+    else:
+        graph_summary = pd.DataFrame([{"quantity": "Graph audit unavailable; rerun prepare_deeplesion_longitudinal.py", "value": "NA"}])
+
+    # Prespecified manual audit manifest; image review fields are intentionally blank.
+    manual = cohort[["trajectory_id", "patient_id", "body_region_group"]].drop_duplicates()
+    manual = manual.sample(n=min(50, len(manual)), random_state=20260901).sort_values("trajectory_id")
+    manual["review_same_lesion_across_visits"] = ""
+    manual["review_duplicate_scan"] = ""
+    manual["review_ambiguous_branch"] = ""
+    manual["review_notes"] = ""
+    manual.to_csv(OUT / "manual_image_audit_manifest_n50.csv", index=False)
 
     # Distribution of full observed trajectory length among patient-consistent components.
     patient_consistent = summary[summary["patient_count"] == 1].copy()
@@ -185,6 +203,9 @@ def main() -> None:
         "",
         "## Main Cohort Overview",
         markdown_table(cohort_overview),
+        "",
+        "## Lesion-Tracking Graph Audit",
+        markdown_table(graph_summary),
         "",
         "## Patient-Level Split",
         markdown_table(split_counts),

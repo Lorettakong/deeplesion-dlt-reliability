@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / "outputs_nlstt_adaptive_uq_paper" / "deeplesion_len5_relative_physics_uq_reliability"
-OUT = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment4_physics_uq_refined"
+OUTPUT_ROOT = Path("outputs_nlstt_adaptive_uq_paper")
+BASE = OUTPUT_ROOT / "deeplesion_len5_relative_physics_uq_reliability"
+OUT = OUTPUT_ROOT / "experiment4_physics_uq_refined"
 
 
 def fmt(mean: float, std: float | None = None, digits: int = 4) -> str:
@@ -33,7 +33,7 @@ def markdown_table(df: pd.DataFrame) -> str:
 
 
 def load_lambda_summary(lambda_value: int) -> pd.DataFrame:
-    path = (BASE / f"lambda_{lambda_value:g}" / "metrics_summary.csv") if lambda_value != 10 else (BASE / "metrics_summary.csv")
+    path = BASE / f"lambda_{lambda_value:g}" / "metrics_summary.csv"
     if not path.exists():
         raise FileNotFoundError(path)
     df = pd.read_csv(path)
@@ -42,7 +42,35 @@ def load_lambda_summary(lambda_value: int) -> pd.DataFrame:
 
 
 def lambda_output_root(lambda_value: int) -> Path:
-    return BASE / f"lambda_{lambda_value:g}" if lambda_value != 10 else BASE
+    return BASE / f"lambda_{lambda_value:g}"
+
+
+def build_lambda_comparison() -> pd.DataFrame:
+    """Build lambda comparisons only from the newly rerun fixed-reference outputs."""
+    rows = []
+    for lambda_value in [1, 10]:
+        summary = load_lambda_summary(lambda_value)
+        cal = summary[summary["variant"] == "calibrated"].copy()
+        for m in [1, 2, 3, 4]:
+            no = cal[(cal["m"] == m) & (cal["method"] == "no_physics_uq")].iloc[0]
+            fixed = cal[
+                (cal["m"] == m)
+                & (cal["method"] == f"fixed_pinn_lambda_{lambda_value:g}_uq")
+            ].iloc[0]
+            rows.append(
+                {
+                    "lambda": f"lambda={lambda_value:g}",
+                    "m": m,
+                    "delta_rmse_fixed_minus_no": fixed.rmse_mean - no.rmse_mean,
+                    "delta_interval_score_fixed_minus_no": fixed.interval_score_mean - no.interval_score_mean,
+                    "delta_wis_fixed_minus_no": fixed.wis_1level_mean - no.wis_1level_mean,
+                    "resid_ratio_fixed_over_no": fixed.physics_residual_abs_mean
+                    / max(no.physics_residual_abs_mean, 1e-12),
+                }
+            )
+    comparison = pd.DataFrame(rows)
+    comparison.to_csv(BASE / "lambda1_lambda10_comparison.csv", index=False)
+    return comparison
 
 
 def calibrated_main_table(lambda_value: int = 1) -> pd.DataFrame:
@@ -51,7 +79,7 @@ def calibrated_main_table(lambda_value: int = 1) -> pd.DataFrame:
     rows = []
     for m in [1, 2, 3, 4]:
         for method_key, method_name in [
-            ("no_physics_uq", "No Regularization + UQ"),
+            ("no_physics_uq", "No Physics + UQ"),
             (
                 f"fixed_pinn_lambda_{lambda_value:g}_uq",
                 f"Gompertz-inspired regularization lambda={lambda_value:g} + UQ",
@@ -65,12 +93,16 @@ def calibrated_main_table(lambda_value: int = 1) -> pd.DataFrame:
                     "RMSE": fmt(r.rmse_mean, r.rmse_std),
                     "PICP": fmt(r.picp_mean, r.picp_std),
                     "MPIW": fmt(r.mpiw_mean, r.mpiw_std),
-                    "ECE": fmt(r.ece_mean, r.ece_std),
-                    "NLL": fmt(r.nll_mean, r.nll_std),
+                    "Interval score": fmt(r.interval_score_mean, r.interval_score_std),
+                    "WIS (one level)": fmt(r.wis_1level_mean, r.wis_1level_std),
+                    "Covered/evaluated model-repeat predictions": (
+                        f"{int(r.covered_model_repeat_evaluations)}/"
+                        f"{int(r.total_model_repeat_evaluations)}"
+                    ),
                     "Gompertz-style residual": fmt(r.physics_residual_abs_mean, r.physics_residual_abs_std),
                     "rmse_mean": r.rmse_mean,
-                    "ece_mean": r.ece_mean,
-                    "nll_mean": r.nll_mean,
+                    "interval_score_mean": r.interval_score_mean,
+                    "wis_mean": r.wis_1level_mean,
                     "resid_mean": r.physics_residual_abs_mean,
                 }
             )
@@ -78,20 +110,20 @@ def calibrated_main_table(lambda_value: int = 1) -> pd.DataFrame:
 
 
 def lambda_comparison_table() -> pd.DataFrame:
-    comp = pd.read_csv(BASE / "lambda1_lambda10_comparison.csv")
+    comp = build_lambda_comparison()
     rows = []
     for lam in ["lambda=1", "lambda=10"]:
         sub = comp[comp["lambda"] == lam].copy()
         rmse_n = int((sub["delta_rmse_fixed_minus_no"] < 0).sum())
-        ece_n = int((sub["delta_ece_fixed_minus_no"] < 0).sum())
-        nll_n = int((sub["delta_nll_fixed_minus_no"] < 0).sum())
+        interval_n = int((sub["delta_interval_score_fixed_minus_no"] < 0).sum())
+        wis_n = int((sub["delta_wis_fixed_minus_no"] < 0).sum())
         ratio = float(sub["resid_ratio_fixed_over_no"].mean())
         rows.append(
             {
                 "Fixed lambda": lam.replace("lambda=", "lambda="),
                 "RMSE improvement": f"{rmse_n}/4",
-                "ECE improvement": f"{ece_n}/4",
-                "NLL improvement": f"{nll_n}/4",
+                "Interval-score improvement": f"{interval_n}/4",
+                "WIS improvement": f"{wis_n}/4",
                 "Mean residual ratio": f"{ratio:.3f}",
                 "Interpretation": (
                     "Main setting; smaller residual with more stable calibration"
@@ -142,10 +174,15 @@ def external_consistency_table(lambda_value: int = 1) -> pd.DataFrame:
     rows = []
     for m in [1, 2, 3, 4]:
         repeat_rows = []
-        for repeat in [1, 2, 3]:
+        repeat_ids = sorted(
+            int(path.name.removeprefix("repeat"))
+            for path in root.glob("repeat*")
+            if path.is_dir() and path.name.removeprefix("repeat").isdigit()
+        )
+        for repeat in repeat_ids:
             task = pd.read_csv(root / f"repeat{repeat}" / f"m{m}" / "task_rows.csv")
             for method_key, method_name in [
-                ("no_physics_uq", "No Regularization + UQ"),
+                ("no_physics_uq", "No Physics + UQ"),
                 (
                     f"fixed_pinn_lambda_{lambda_value:g}_uq",
                     f"Gompertz-inspired regularization lambda={lambda_value:g} + UQ",
@@ -196,11 +233,13 @@ def high_residual_table(lambda_value: int = 1) -> pd.DataFrame:
         rows.append(
             {
                 "m": m,
-                "High-residual RMSE No Regularization": f"{no.rmse:.4f}",
+                "High-residual RMSE No Physics": f"{no.rmse:.4f}",
                 "High-residual RMSE regularized": f"{fx.rmse:.4f}",
-                "High-residual NLL No Regularization": f"{no.nll:.4f}",
-                "High-residual NLL regularized": f"{fx.nll:.4f}",
-                "High-residual residual No Regularization": f"{no.physics_residual_abs:.4f}",
+                "High-residual interval score No Physics": f"{no.interval_score:.4f}",
+                "High-residual interval score regularized": f"{fx.interval_score:.4f}",
+                "High-residual WIS No Physics": f"{no.wis_1level:.4f}",
+                "High-residual WIS regularized": f"{fx.wis_1level:.4f}",
+                "High-residual residual No Physics": f"{no.physics_residual_abs:.4f}",
                 "High-residual residual regularized": f"{fx.physics_residual_abs:.4f}",
             }
         )
@@ -209,10 +248,10 @@ def high_residual_table(lambda_value: int = 1) -> pd.DataFrame:
 
 def make_figure() -> Path:
     main = calibrated_main_table(lambda_value=1)
-    comp = pd.read_csv(BASE / "lambda1_lambda10_comparison.csv")
+    comp = build_lambda_comparison()
     ms = np.array([1, 2, 3, 4])
 
-    no = main[main["Method"] == "No Regularization + UQ"].sort_values("m")
+    no = main[main["Method"] == "No Physics + UQ"].sort_values("m")
     fx = main[main["Method"] == "Gompertz-inspired regularization lambda=1 + UQ"].sort_values("m")
 
     plt.rcParams.update(
@@ -227,23 +266,23 @@ def make_figure() -> Path:
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
     ax = axes[0, 0]
-    ax.plot(ms, no["nll_mean"], marker="o", label="No Regularization + UQ")
-    ax.plot(ms, fx["nll_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
-    ax.set_title("A. Calibrated NLL")
+    ax.plot(ms, no["interval_score_mean"], marker="o", label="No Physics + UQ")
+    ax.plot(ms, fx["interval_score_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
+    ax.set_title("A. Conformal interval score")
     ax.set_xlabel("Observed CT visits (m)")
-    ax.set_ylabel("NLL")
+    ax.set_ylabel("Interval score (lower is better)")
     ax.legend(frameon=False)
 
     ax = axes[0, 1]
-    ax.plot(ms, no["ece_mean"], marker="o", label="No Regularization + UQ")
-    ax.plot(ms, fx["ece_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
-    ax.set_title("B. Calibrated ECE")
+    ax.plot(ms, no["wis_mean"], marker="o", label="No Physics + UQ")
+    ax.plot(ms, fx["wis_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
+    ax.set_title("B. Conformal WIS")
     ax.set_xlabel("Observed CT visits (m)")
-    ax.set_ylabel("ECE")
+    ax.set_ylabel("WIS (lower is better)")
     ax.legend(frameon=False)
 
     ax = axes[1, 0]
-    ax.semilogy(ms, no["resid_mean"], marker="o", label="No Regularization + UQ")
+    ax.semilogy(ms, no["resid_mean"], marker="o", label="No Physics + UQ")
     ax.semilogy(ms, fx["resid_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
     ax.set_title("C. Gompertz-style residual")
     ax.set_xlabel("Observed CT visits (m)")
@@ -259,8 +298,8 @@ def make_figure() -> Path:
         deltas.append(
             [
                 int((sub["delta_rmse_fixed_minus_no"] < 0).sum()),
-                int((sub["delta_ece_fixed_minus_no"] < 0).sum()),
-                int((sub["delta_nll_fixed_minus_no"] < 0).sum()),
+                int((sub["delta_interval_score_fixed_minus_no"] < 0).sum()),
+                int((sub["delta_wis_fixed_minus_no"] < 0).sum()),
             ]
         )
     x = np.arange(3)
@@ -268,7 +307,7 @@ def make_figure() -> Path:
     ax.bar(x - width / 2, deltas[0], width, label="lambda=1")
     ax.bar(x + width / 2, deltas[1], width, label="lambda=10")
     ax.set_xticks(x)
-    ax.set_xticklabels(["RMSE", "ECE", "NLL"])
+    ax.set_xticklabels(["RMSE", "Interval score", "WIS"])
     ax.set_ylim(0, 4.4)
     ax.set_ylabel("Number of improved m settings")
     ax.set_title("D. Sensitivity summary")
@@ -292,10 +331,11 @@ def write_report() -> Path:
     external_l1 = external_consistency_table(lambda_value=1)
     external_l10 = external_consistency_table(lambda_value=10)
 
-    main_l1.drop(columns=["rmse_mean", "ece_mean", "nll_mean", "resid_mean"]).to_csv(
+    hidden_cols = ["rmse_mean", "interval_score_mean", "wis_mean", "resid_mean"]
+    main_l1.drop(columns=hidden_cols).to_csv(
         OUT / "table4a_lambda1_calibrated_uq.csv", index=False
     )
-    main_l10.drop(columns=["rmse_mean", "ece_mean", "nll_mean", "resid_mean"]).to_csv(
+    main_l10.drop(columns=hidden_cols).to_csv(
         OUT / "table4b_lambda10_calibrated_uq.csv", index=False
     )
     sens.to_csv(OUT / "table4c_lambda_sensitivity_summary.csv", index=False)
@@ -308,15 +348,15 @@ def write_report() -> Path:
     lines = [
         "# Experiment 4: Gompertz-Inspired Regularization and UQ Reliability",
         "",
-        "Main setting: Gompertz-inspired regularization lambda=1 + MC Dropout UQ versus No Regularization + MC Dropout UQ.",
+        "Main setting: Gompertz-inspired regularization lambda=1 + MC Dropout UQ versus No Physics + MC Dropout UQ.",
         "",
         "## Table 4A. Lambda=1 calibrated UQ results",
         "",
-        markdown_table(main_l1.drop(columns=["rmse_mean", "ece_mean", "nll_mean", "resid_mean"])),
+        markdown_table(main_l1.drop(columns=hidden_cols)),
         "",
         "## Table 4B. Lambda=10 calibrated UQ results",
         "",
-        markdown_table(main_l10.drop(columns=["rmse_mean", "ece_mean", "nll_mean", "resid_mean"])),
+        markdown_table(main_l10.drop(columns=hidden_cols)),
         "",
         "## Table 4C. Lambda sensitivity",
         "",

@@ -19,7 +19,7 @@ behavior, statistical uncertainty, and trajectory regularization diagnostics.
 │   ├── data.py                        # Cohort loading, task construction, split utilities
 │   ├── models.py                      # Sparse trajectory MLP and model heads
 │   ├── train.py                       # Training loops
-│   ├── uq_methods.py                  # Deterministic, MC Dropout, ensemble, Residual Gaussian
+│   ├── uq_methods.py                  # Deterministic, GP, MC Dropout, ensemble, residual-scale UQ
 │   ├── metrics.py                     # RMSE, MAE, PICP, MPIW, ECE, NLL, calibration
 │   ├── physics.py                     # Gompertz-inspired trajectory regularization
 │   └── mechanistic_baselines.py       # Traditional longitudinal baselines
@@ -53,9 +53,12 @@ inspected and regenerated without redistributing raw CT images.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e .
 ```
 
-The experiments were implemented in Python/PyTorch, with figure polishing
+The editable installation makes the local package available to every script
+while keeping code changes immediately visible. The experiments were
+implemented in Python/PyTorch, with figure polishing
 performed using R scripts saved beside the corresponding figure source data.
 
 ## Main Experimental Components
@@ -65,9 +68,10 @@ performed using R scripts saved beside the corresponding figure source data.
 | Exp0 Data quality audit | Audit trajectory lengths, body-site distribution, patient split, and outliers | `scripts/build_experiment0_data_audit.py`, `scripts/plot_experiment0_data_audit.py` |
 | Exp1 Follow-up density | Test whether more observed visits improve final-visit prediction; subgroup RMSE | `scripts/plot_experiment1_followup_density.py` |
 | Exp1 traditional baselines | Compare neural/UQ models with classical longitudinal baselines | `scripts/run_experiment1_traditional_baselines.py` |
-| Exp2 UQ comparison | Compare Deterministic MLP, MC Dropout, Deep Ensemble, and Residual Gaussian | `scripts/run_experiment2_uq_refined.py` |
+| Exp2 UQ comparison | Compare Deterministic MLP, Gaussian Process, MC Dropout, Deep Ensemble, and Gaussian residual-scale | `scripts/run_experiment2_uq_refined.py` |
 | Exp2 calibration sensitivity | Compare 90% and 95% calibrated intervals | `scripts/run_experiment2_calibration_sensitivity.py` |
 | Exp3 regularization weight | Evaluate Gompertz-inspired regularization weights | `scripts/run_experiment3_physics_refined.py` |
+| Measurement-proxy sensitivity | Repeat the regularization comparison for ellipsoid volume, RECIST area, and long-axis length | `scripts/run_measurement_proxy_sensitivity.py` |
 | Exp4 regularized UQ | Evaluate regularization with calibrated MC Dropout UQ | `scripts/run_experiment4_physics_uq_refined.py` |
 | Exp5 diagnostics | Calibration, subgroup, target-magnitude, and interval diagnostics | `scripts/run_experiment5_calibration_diagnostics.py` |
 | Statistical inference | Patient-level cluster bootstrap and paired differences | `scripts/run_patient_cluster_bootstrap_analysis.py` |
@@ -91,7 +95,8 @@ The released scripts use the experimental settings described in the manuscript:
 | MC Dropout samples | 50 stochastic forward passes |
 | Deep Ensemble size | 5 independently initialized models |
 | Calibration target | 95% prediction interval, alpha = 0.05 |
-| Split rule | Patient-level train/validation/test split |
+| Split rule | Patient-level development/calibration/test split (140/27/38 trajectories) |
+| Main training repeats | 10 independent seeds |
 
 Experiment-specific repeat counts, epochs, and sensitivity settings are encoded
 in the corresponding scripts and output summaries.
@@ -123,6 +128,7 @@ experiment scripts can be run from the repository root, for example:
 ```bash
 python scripts/run_experiment2_uq_refined.py
 python scripts/run_experiment3_physics_refined.py
+python scripts/run_measurement_proxy_sensitivity.py
 python scripts/run_experiment4_physics_uq_refined.py
 python scripts/run_experiment5_calibration_diagnostics.py
 ```

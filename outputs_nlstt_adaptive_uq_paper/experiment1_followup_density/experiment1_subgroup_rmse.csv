@@ -1,0 +1,13 @@
+subgroup,m,N_test,selected_method,forecast_mode,rmse,ci95_half,RMSE
+abdomen/liver,1,13,Deterministic,fixed_horizon_recent_history,0.3015234762499751,0.017550595213784024,0.3015 +/- 0.0176
+chest/lung,1,17,Deterministic,fixed_horizon_recent_history,0.47855879006002766,0.008167835846528922,0.4786 +/- 0.0082
+other,1,8,Deterministic,fixed_horizon_recent_history,0.6376650815071475,0.0028976691055266285,0.6377 +/- 0.0029
+abdomen/liver,2,13,Deterministic,fixed_horizon_recent_history,0.2958145076218214,0.01915211779069772,0.2958 +/- 0.0192
+chest/lung,2,17,Deterministic,fixed_horizon_recent_history,0.4639782843530499,0.013785349204310364,0.4640 +/- 0.0138
+other,2,8,Deterministic,fixed_horizon_recent_history,0.5813651903652619,0.009732802852798603,0.5814 +/- 0.0097
+abdomen/liver,3,13,Deterministic,fixed_horizon_recent_history,0.2766177731250794,0.012147395343603784,0.2766 +/- 0.0121
+chest/lung,3,17,Deterministic,fixed_horizon_recent_history,0.4524527157979369,0.008461080733054304,0.4525 +/- 0.0085
+other,3,8,Deterministic,fixed_horizon_recent_history,0.5755989109486441,0.00846601297474833,0.5756 +/- 0.0085
+abdomen/liver,4,13,Deterministic,fixed_horizon_recent_history,0.296197955229741,0.016097194504082164,0.2962 +/- 0.0161
+chest/lung,4,17,Deterministic,fixed_horizon_recent_history,0.4582817029709661,0.01088783374860645,0.4583 +/- 0.0109
+other,4,8,Deterministic,fixed_horizon_recent_history,0.5774369593580833,0.009565304392422046,0.5774 +/- 0.0096

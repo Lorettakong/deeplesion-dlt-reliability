@@ -1,1 +1,1 @@
-"""Utilities for sparse longitudinal CT lesion prediction reliability experiments."""
+"""Experiment package for NLSTt adaptive uncertainty-weighted PINN studies."""

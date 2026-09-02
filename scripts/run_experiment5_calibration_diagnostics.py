@@ -12,22 +12,18 @@ import pandas as pd
 from scipy.stats import beta
 
 
-ROOT = Path(__file__).resolve().parents[1]
-EXP2 = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_uq_refined"
-COHORT = (
-    ROOT
-    / "outputs_nlstt_adaptive_uq_paper"
-    / "deeplesion_len5_relative_main205"
-    / "cohort_deeplesion_len5_long.csv"
-)
-OUT = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment5_calibration_diagnostics"
+OUTPUT_ROOT = Path("outputs_nlstt_adaptive_uq_paper")
+EXP2 = OUTPUT_ROOT / "experiment2_uq_refined"
+COHORT = OUTPUT_ROOT / "deeplesion_len5_relative_main205" / "cohort_deeplesion_len5_long.csv"
+OUT = OUTPUT_ROOT / "experiment5_calibration_diagnostics"
 
-METHODS = ["deterministic", "mc_dropout", "deep_ensemble", "bayesian_laplace"]
+METHODS = ["deterministic", "gaussian_process", "mc_dropout", "deep_ensemble", "bayesian_laplace"]
 LABELS = {
     "deterministic": "Deterministic",
+    "gaussian_process": "Gaussian Process",
     "mc_dropout": "MC Dropout",
     "deep_ensemble": "Deep Ensemble",
-    "bayesian_laplace": "Residual Gaussian",
+    "bayesian_laplace": "Gaussian residual-scale",
 }
 
 
@@ -98,9 +94,14 @@ def reliability_curve(df: pd.DataFrame, levels: list[float]) -> list[float]:
 def load_predictions(m: int = 4, variant: str = "calibrated") -> pd.DataFrame:
     rows = []
     labels = load_body_site_labels()
-    for repeat in [1, 2, 3]:
+    repeat_dirs = sorted(
+        (p for p in EXP2.glob("repeat*") if p.is_dir()),
+        key=lambda p: int(p.name.removeprefix("repeat")),
+    )
+    for repeat_dir in repeat_dirs:
+        repeat = int(repeat_dir.name.removeprefix("repeat"))
         for method in METHODS:
-            path = EXP2 / f"repeat{repeat}" / f"m{m}" / f"pred_{method}_{variant}.csv"
+            path = repeat_dir / f"m{m}" / f"pred_{method}_{variant}.csv"
             if not path.exists():
                 continue
             df = pd.read_csv(path)
@@ -159,7 +160,8 @@ def make_summary_tables(pred: pd.DataFrame) -> None:
                 "analysis": "exploratory",
                 "n_test_trajectories": n_independent,
                 "covered_trajectories": successes,
-                "PICP": f"{picp(group):.4f}",
+                "Coverage fraction": f"{successes}/{n_independent}",
+                "PICP": f"{successes / n_independent:.4f}",
                 "PICP Clopper-Pearson 95% CI": f"{cp_low:.4f}-{cp_high:.4f}",
                 "MPIW": f"{np.mean(interval_width(group)):.4f}",
                 "MAE": f"{np.mean(abs_error(group)):.4f}",
@@ -179,7 +181,8 @@ def make_summary_tables(pred: pd.DataFrame) -> None:
                 "analysis": "exploratory",
                 "n_test_trajectories": n_independent,
                 "covered_trajectories": successes,
-                "PICP": f"{picp(group):.4f}",
+                "Coverage fraction": f"{successes}/{n_independent}",
+                "PICP": f"{successes / n_independent:.4f}",
                 "PICP Clopper-Pearson 95% CI": f"{cp_low:.4f}-{cp_high:.4f}",
                 "MPIW": f"{np.mean(interval_width(group)):.4f}",
                 "MAE": f"{np.mean(abs_error(group)):.4f}",

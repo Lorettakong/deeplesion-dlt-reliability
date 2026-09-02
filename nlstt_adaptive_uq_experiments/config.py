@@ -11,6 +11,7 @@ NLSTT_ALL_ELIGIBLE_SUMMARY_CSV = (
 )
 OUT_DIR = PROJECT_ROOT / "outputs_nlstt_adaptive_uq_paper"
 DEEPLESION_TRAJ_LEN5_CSV = PROJECT_ROOT / "outputs_deeplesion_longitudinal" / "deeplesion_trajectories_len5.csv"
+DEEPLESION_TRAJ_LEN5_STRICT_CSV = PROJECT_ROOT / "outputs_deeplesion_longitudinal" / "deeplesion_trajectories_len5_strict.csv"
 DEEPLESION_TRAJ_LABELS_CSV = PROJECT_ROOT / "outputs_deeplesion_longitudinal" / "deeplesion_len5_trajectory_labels.csv"
 
 

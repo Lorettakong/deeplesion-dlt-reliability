@@ -17,15 +17,15 @@ from nlstt_adaptive_uq_experiments.data import (
     split_trajectory_ids_by_patient,
 )
 from nlstt_adaptive_uq_experiments.metrics import summarize_predictions
+from nlstt_adaptive_uq_experiments.physics import estimate_fixed_gompertz_reference
 from nlstt_adaptive_uq_experiments.train import train_single_model
 from nlstt_adaptive_uq_experiments.uq_methods import predict_deterministic
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT_DIR = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment3_physics_refined"
+OUT_DIR = Path("outputs_nlstt_adaptive_uq_paper/experiment3_physics_refined")
 LAMBDA_VALUES = [0.0, 0.1, 1.0, 10.0, 100.0]
 LAMBDA_LABELS = {
-    0.0: "No Regularization",
+    0.0: "No Physics",
     0.1: "lambda=0.1",
     1.0: "lambda=1",
     10.0: "lambda=10",
@@ -216,7 +216,8 @@ def _write_report(summary: pd.DataFrame) -> None:
         "For relative log-volume y(t)=log(V(t)/V(0)), the Gompertz form is dy/dt=a(c-y). "
         "Because the network predicts only the final visit, the implemented residual is "
         "r = (y_hat_T - y_last) / Delta t - a(c - 0.5*(y_last + y_hat_T)). "
-        "Here a and c are trajectory-conditioned outputs of the network, and Delta t is the visit-index interval.",
+        "Here a and c are estimated once from the mean trajectory of the training patients and then frozen. "
+        "They are not trajectory-conditioned outputs and cannot adapt to the predicted target. Delta t is the visit-index interval.",
         "",
         "## Table 3A. RMSE",
         "",
@@ -238,7 +239,7 @@ def _write_report(summary: pd.DataFrame) -> None:
     (OUT_DIR / "experiment3_refined_report.md").write_text("\n".join(lines), encoding="utf-8")
 
 
-def main() -> None:
+def main(repeats: int = 10) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     cfg = ExperimentConfig()
     train_cfg = TrainConfig(epochs=300, batch_size=128, hidden_dim=64, dropout=0.10)
@@ -251,9 +252,13 @@ def main() -> None:
         test_fraction=cfg.cohort.test_fraction,
         val_fraction=cfg.cohort.val_fraction,
     )
+    gompertz_reference = estimate_fixed_gompertz_reference(df, split.train)
+    pd.DataFrame([gompertz_reference.__dict__]).to_csv(
+        OUT_DIR / "gompertz_reference_training_only.csv", index=False
+    )
     rows = []
     pred_rows = []
-    for repeat in range(5):
+    for repeat in range(repeats):
         repeat_seed = 93000 * repeat
         for m in [1, 2, 3, 4]:
             train_df = make_deeplesion_prediction_task(df, split.train, m=m)
@@ -268,7 +273,13 @@ def main() -> None:
             for lam in LAMBDA_VALUES:
                 method = "no_physics" if lam == 0.0 else "fixed_pinn"
                 cfg_lam = train_cfg.__class__(**{**train_cfg.__dict__, "fixed_lambda_phys": lam})
-                trained = train_single_model(train_df, cfg_lam, method=method, seed=repeat_seed + m * 100 + int(lam * 10))
+                trained = train_single_model(
+                    train_df,
+                    cfg_lam,
+                    method=method,
+                    seed=repeat_seed + m * 100 + int(lam * 10),
+                    gompertz_reference=gompertz_reference,
+                )
                 pred = predict_deterministic(trained, test_df)
                 pred["patient_id"] = pred["trajectory_id"].astype(str).map(patient_lookup)
                 pred["repeat"] = repeat + 1
@@ -305,4 +316,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repeats", type=int, default=10, help="Independent training seeds on a fixed patient split.")
+    args = parser.parse_args()
+    main(repeats=args.repeats)

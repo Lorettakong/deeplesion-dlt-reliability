@@ -17,8 +17,40 @@ def interval_metrics(y_true: np.ndarray, lower: np.ndarray, upper: np.ndarray) -
     covered = (y_true >= lower) & (y_true <= upper)
     return {
         "picp": float(np.mean(covered)),
+        "covered_count": int(np.sum(covered)),
+        "evaluation_count": int(len(covered)),
         "mpiw": float(np.mean(upper - lower)),
     }
+
+
+def interval_score(
+    y_true: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    alpha: float = 0.05,
+) -> float:
+    """Mean central prediction-interval score (lower is better)."""
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must be between zero and one.")
+    score = (
+        (upper - lower)
+        + (2.0 / alpha) * (lower - y_true) * (y_true < lower)
+        + (2.0 / alpha) * (y_true - upper) * (y_true > upper)
+    )
+    return float(np.mean(score))
+
+
+def one_level_weighted_interval_score(
+    y_true: np.ndarray,
+    median: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    alpha: float = 0.05,
+) -> float:
+    """WIS using the predictive median and one central interval level."""
+    is_value = interval_score(y_true, lower, upper, alpha=alpha)
+    numerator = 0.5 * float(np.mean(np.abs(y_true - median))) + (alpha / 2.0) * is_value
+    return numerator / (0.5 + alpha / 2.0)
 
 
 def gaussian_nll(y_true: np.ndarray, y_mean: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> float:
@@ -46,8 +78,30 @@ def summarize_predictions(df: pd.DataFrame) -> dict[str, float]:
         lower = df["logv_lower"].to_numpy(float)
         upper = df["logv_upper"].to_numpy(float)
         out.update(interval_metrics(y_true, lower, upper))
-        out["nll"] = gaussian_nll(y_true, y_mean, lower, upper)
-        out["ece"] = interval_ece(y_true, y_mean, lower, upper)
+        alpha = (
+            float(df["interval_alpha"].iloc[0])
+            if "interval_alpha" in df.columns
+            else 0.05
+        )
+        out["interval_alpha"] = alpha
+        out["interval_score"] = interval_score(y_true, lower, upper, alpha=alpha)
+        out["wis_1level"] = one_level_weighted_interval_score(
+            y_true, y_mean, lower, upper, alpha=alpha
+        )
+        is_conformal = (
+            "interval_type" in df.columns
+            and df["interval_type"].astype(str).str.startswith("conformal").all()
+        )
+        if "predictive_log_prob" in df.columns and not is_conformal:
+            out["nll"] = float(-np.mean(df["predictive_log_prob"].to_numpy(float)))
+            out["nll_definition"] = "predictive_density"
+        elif not is_conformal:
+            out["nll"] = gaussian_nll(y_true, y_mean, lower, upper)
+            out["nll_definition"] = "working_gaussian_from_interval"
+        else:
+            out["nll"] = float("nan")
+            out["nll_definition"] = "not_defined_for_conformal_interval"
+        out["ece"] = float("nan") if is_conformal else interval_ece(y_true, y_mean, lower, upper)
     if "physics_residual_abs" in df.columns:
         out["physics_residual_abs"] = float(np.mean(df["physics_residual_abs"].to_numpy(float)))
     elif "physics_residual" in df.columns:
@@ -86,6 +140,9 @@ def residual_calibrate_intervals(
     out["logv_upper_raw"] = out.get("logv_upper", out["logv_mean"])
     out["logv_lower"] = out["logv_mean"] - q
     out["logv_upper"] = out["logv_mean"] + q
+    out["interval_type"] = "conformal_absolute_residual"
+    out["interval_alpha"] = alpha
+    out["predictive_log_prob"] = np.nan
     return out, q
 
 
@@ -110,4 +167,110 @@ def conformalize_existing_intervals(
     half_width = q * test_sigma
     out["logv_lower"] = out["logv_mean"] - half_width
     out["logv_upper"] = out["logv_mean"] + half_width
+    out["interval_type"] = "conformal_normalized_residual"
+    out["interval_alpha"] = alpha
+    out["predictive_log_prob"] = np.nan
     return out, q
+
+
+def _patient_aggregate_scores(
+    calibration_pred: pd.DataFrame,
+    scores: np.ndarray,
+    patient_col: str = "patient_id",
+) -> np.ndarray:
+    """Return one conservative nonconformity score per calibration patient."""
+    if patient_col not in calibration_pred.columns:
+        raise ValueError(
+            f"Patient-level conformal calibration requires {patient_col!r}."
+        )
+    scored = pd.DataFrame(
+        {patient_col: calibration_pred[patient_col].astype(str), "score": scores}
+    )
+    return scored.groupby(patient_col, sort=True)["score"].max().to_numpy(float)
+
+
+def patient_level_residual_calibrate_intervals(
+    calibration_pred: pd.DataFrame,
+    test_pred: pd.DataFrame,
+    alpha: float = 0.05,
+    patient_col: str = "patient_id",
+) -> tuple[pd.DataFrame, float, dict[str, float | int | str]]:
+    """Patient-cluster split conformal using one maximum residual per patient."""
+    trajectory_scores = np.abs(
+        calibration_pred["logv_target"].to_numpy(float)
+        - calibration_pred["logv_mean"].to_numpy(float)
+    )
+    patient_scores = _patient_aggregate_scores(
+        calibration_pred, trajectory_scores, patient_col=patient_col
+    )
+    q, rank, level = split_conformal_quantile(patient_scores, alpha)
+    out = test_pred.copy()
+    out["logv_lower_raw"] = out.get("logv_lower", out["logv_mean"])
+    out["logv_upper_raw"] = out.get("logv_upper", out["logv_mean"])
+    out["logv_lower"] = out["logv_mean"] - q
+    out["logv_upper"] = out["logv_mean"] + q
+    out["interval_type"] = "conformal_patient_cluster_absolute"
+    out["interval_alpha"] = alpha
+    out["predictive_log_prob"] = np.nan
+    metadata = {
+        "calibration_unit": "patient",
+        "patient_score_aggregation": "maximum",
+        "n_calibration_patients": int(len(patient_scores)),
+        "conformal_rank": int(rank),
+        "conformal_level": float(level),
+    }
+    return out, q, metadata
+
+
+def patient_level_conformalize_existing_intervals(
+    calibration_pred: pd.DataFrame,
+    test_pred: pd.DataFrame,
+    alpha: float = 0.05,
+    patient_col: str = "patient_id",
+) -> tuple[pd.DataFrame, float, dict[str, float | int | str]]:
+    """Patient-cluster normalized split conformal for predictive scales."""
+    required = {"logv_target", "logv_mean", "logv_lower", "logv_upper", patient_col}
+    if not required.issubset(calibration_pred.columns) or not required.issubset(test_pred.columns):
+        return patient_level_residual_calibrate_intervals(
+            calibration_pred, test_pred, alpha=alpha, patient_col=patient_col
+        )
+    cal_sigma = np.clip(
+        (
+            calibration_pred["logv_upper"].to_numpy(float)
+            - calibration_pred["logv_lower"].to_numpy(float)
+        )
+        / (2.0 * 1.959963984540054),
+        1e-6,
+        None,
+    )
+    trajectory_scores = np.abs(
+        calibration_pred["logv_target"].to_numpy(float)
+        - calibration_pred["logv_mean"].to_numpy(float)
+    ) / cal_sigma
+    patient_scores = _patient_aggregate_scores(
+        calibration_pred, trajectory_scores, patient_col=patient_col
+    )
+    q, rank, level = split_conformal_quantile(patient_scores, alpha)
+    out = test_pred.copy()
+    out["logv_lower_raw"] = out["logv_lower"]
+    out["logv_upper_raw"] = out["logv_upper"]
+    test_sigma = np.clip(
+        (out["logv_upper"].to_numpy(float) - out["logv_lower"].to_numpy(float))
+        / (2.0 * 1.959963984540054),
+        1e-6,
+        None,
+    )
+    half_width = q * test_sigma
+    out["logv_lower"] = out["logv_mean"] - half_width
+    out["logv_upper"] = out["logv_mean"] + half_width
+    out["interval_type"] = "conformal_patient_cluster_normalized"
+    out["interval_alpha"] = alpha
+    out["predictive_log_prob"] = np.nan
+    metadata = {
+        "calibration_unit": "patient",
+        "patient_score_aggregation": "maximum",
+        "n_calibration_patients": int(len(patient_scores)),
+        "conformal_rank": int(rank),
+        "conformal_level": float(level),
+    }
+    return out, q, metadata

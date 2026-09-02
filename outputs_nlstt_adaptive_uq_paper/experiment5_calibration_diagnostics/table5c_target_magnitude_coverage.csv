@@ -1,13 +1,16 @@
-Method,Target magnitude,analysis,n_test_trajectories,covered_trajectories,PICP,PICP Clopper-Pearson 95% CI,MPIW,MAE
-Deterministic,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8381,0.2607
-Deterministic,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.8381,0.4216
-Deterministic,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8381,0.3963
-MC Dropout,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.6589,0.2322
-MC Dropout,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,3.2360,0.3794
-MC Dropout,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,3.3941,0.4076
-Deep Ensemble,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.7336,0.2492
-Deep Ensemble,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.8808,0.3749
-Deep Ensemble,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.8417,0.4124
-Residual Gaussian,middle y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.9323,0.2434
-Residual Gaussian,high y(T4),exploratory,12,12,1.0000,0.7354-1.0000,2.9323,0.3518
-Residual Gaussian,low y(T4),exploratory,13,13,1.0000,0.7529-1.0000,2.9323,0.4193
+Method,Target magnitude,analysis,n_test_trajectories,covered_trajectories,Coverage fraction,PICP,PICP Clopper-Pearson 95% CI,MPIW,MAE
+Deterministic,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9337,0.2414
+Deterministic,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9337,0.4066
+Deterministic,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9337,0.4176
+Gaussian Process,middle y(T4),exploratory,14,14,14/14,1.0000,0.7684-1.0000,2.9483,0.2607
+Gaussian Process,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9529,0.3880
+Gaussian Process,low y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9564,0.4189
+MC Dropout,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.8417,0.2317
+MC Dropout,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,3.0501,0.3557
+MC Dropout,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9693,0.4300
+Deep Ensemble,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.7233,0.2497
+Deep Ensemble,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.8771,0.3782
+Deep Ensemble,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.8323,0.4112
+Gaussian residual-scale,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9318,0.2420
+Gaussian residual-scale,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9318,0.3964
+Gaussian residual-scale,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9318,0.4162

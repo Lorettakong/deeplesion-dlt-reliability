@@ -11,6 +11,7 @@ entry point or released output folder.
 | Experiment 2: UQ method comparison | `scripts/run_experiment2_uq_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment2_uq_refined/` |
 | Experiment 2: calibration sensitivity | `scripts/run_experiment2_calibration_sensitivity.py`; `outputs_nlstt_adaptive_uq_paper/experiment2_calibration_sensitivity/` |
 | Experiment 3: regularization-weight sensitivity | `scripts/run_experiment3_physics_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment3_physics_refined/` |
+| Measurement-proxy sensitivity | `scripts/run_measurement_proxy_sensitivity.py`; `outputs_nlstt_adaptive_uq_paper/measurement_proxy_sensitivity/` |
 | Experiment 4: regularized UQ reliability | `scripts/run_experiment4_physics_uq_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment4_physics_uq_refined/` |
 | Experiment 5: calibration and subgroup diagnostics | `scripts/run_experiment5_calibration_diagnostics.py`; `outputs_nlstt_adaptive_uq_paper/experiment5_calibration_diagnostics/` |
 | Trajectory-window sensitivity | `scripts/run_trajectory_window_sensitivity.py`; `scripts/run_trajectory_window_sensitivity_mlp.py` |

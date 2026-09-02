@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 OUT_DIR = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment1_followup_density"
 EXP2_DIR = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_uq_refined"
 COHORT_CSV = (
@@ -25,7 +25,7 @@ METHOD_TO_FILE = {
     "Deterministic": "pred_deterministic_calibrated.csv",
     "MC Dropout": "pred_mc_dropout_calibrated.csv",
     "Deep Ensemble": "pred_deep_ensemble_calibrated.csv",
-    "Residual Gaussian": "pred_bayesian_laplace_calibrated.csv",
+    "Gaussian residual-scale": "pred_bayesian_laplace_calibrated.csv",
 }
 
 BODY_REGION_LABELS = {
@@ -56,14 +56,21 @@ def format_rmse(mean: float, ci: float) -> str:
     return f"{mean:.4f} +/- {ci:.4f}"
 
 
-def selected_method_by_m() -> dict[int, str]:
-    selection_path = EXP2_DIR / "experiment2_validation_selected_methods.csv"
-    if not selection_path.exists():
-        raise FileNotFoundError(
-            f"Missing {selection_path}. Run run_experiment2_uq_refined.py after the validation-selection patch first."
-        )
-    table = pd.read_csv(selection_path)
-    return {int(row["m"]): str(row["selected_method"]) for _, row in table.iterrows()}
+FIXED_METHOD = "Deterministic"
+
+
+def available_repeats() -> list[int]:
+    repeats = []
+    for path in EXP2_DIR.glob("repeat*"):
+        try:
+            repeat = int(path.name.removeprefix("repeat"))
+        except ValueError:
+            continue
+        if all((path / f"m{m}" / METHOD_TO_FILE[FIXED_METHOD]).exists() for m in [1, 2, 3, 4]):
+            repeats.append(repeat)
+    if not repeats:
+        raise FileNotFoundError(f"No complete Experiment 2 repeats found under {EXP2_DIR}")
+    return sorted(repeats)
 
 
 def load_test_groups() -> pd.DataFrame:
@@ -85,6 +92,7 @@ def summarize(values: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
             {
                 "N_test": int(group["N_test"].iloc[0]),
                 "selected_method": group["selected_method"].iloc[0],
+                "forecast_mode": group["forecast_mode"].iloc[0],
                 "rmse": mean,
                 "ci95_half": ci,
                 "RMSE": format_rmse(mean, ci),
@@ -95,15 +103,15 @@ def summarize(values: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
 
 
 def build_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    selected = selected_method_by_m()
     test_groups = load_test_groups()
+    repeats = available_repeats()
 
     pooled_repeat_rows = []
     subgroup_repeat_rows = []
     for m in [1, 2, 3, 4]:
-        method = selected[m]
+        method = FIXED_METHOD
         pred_file = METHOD_TO_FILE[method]
-        for repeat in [1, 2, 3]:
+        for repeat in repeats:
             pred_path = EXP2_DIR / f"repeat{repeat}" / f"m{m}" / pred_file
             pred = pd.read_csv(pred_path)
             pred = pred.merge(test_groups, on="trajectory_id", how="left", validate="one_to_one")
@@ -115,6 +123,7 @@ def build_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFra
                     "repeat": repeat,
                     "N_test": len(pred),
                     "selected_method": method,
+                    "forecast_mode": "fixed_horizon_recent_history",
                     "rmse": rmse(pred["logv_target"], pred["logv_mean"]),
                 }
             )
@@ -127,6 +136,7 @@ def build_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFra
                         "repeat": repeat,
                         "N_test": len(group),
                         "selected_method": method,
+                        "forecast_mode": "fixed_horizon_recent_history",
                         "rmse": rmse(group["logv_target"], group["logv_mean"]),
                     }
                 )
@@ -138,7 +148,7 @@ def build_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFra
     subgroup_summary = summarize(subgroup_by_repeat, ["subgroup", "m"])
 
     checks = []
-    for repeat in [1, 2, 3]:
+    for repeat in repeats:
         for m in [1, 2, 3, 4]:
             pooled_rmse = pooled_by_repeat.query("repeat == @repeat and m == @m")["rmse"].iloc[0]
             subgroup_slice = subgroup_by_repeat.query("repeat == @repeat and m == @m")
@@ -174,8 +184,8 @@ def plot_figure(pooled: pd.DataFrame, subgroup: pd.DataFrame) -> None:
     )
     for _, row in pooled.iterrows():
         ax.text(row["m"], row["rmse"] + 0.035, f"{row['rmse']:.3f}", ha="center", fontsize=9)
-    ax.set_title("A. Pooled test set: validation-selected RMSE")
-    ax.set_xlabel("Observed CT visits (m)")
+    ax.set_title("A. Pooled test set: fixed deterministic MLP")
+    ax.set_xlabel("Most recent pre-target CT visits (m)")
     ax.set_ylabel("RMSE of relative log-volume")
     ax.set_xticks([1, 2, 3, 4])
     ax.set_ylim(0.22, 1.08)
@@ -200,7 +210,7 @@ def plot_figure(pooled: pd.DataFrame, subgroup: pd.DataFrame) -> None:
             color=colors[name],
         )
     ax.set_title("B. Subgroup RMSE by lesion site")
-    ax.set_xlabel("Observed CT visits (m)")
+    ax.set_xlabel("Most recent pre-target CT visits (m)")
     ax.set_ylabel("RMSE of relative log-volume")
     ax.set_xticks([1, 2, 3, 4])
     ax.set_ylim(0.20, 1.22)
@@ -216,14 +226,14 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     pooled_by_repeat, subgroup_by_repeat, pooled, subgroup, consistency = build_tables()
 
-    pooled.to_csv(OUT_DIR / "experiment1_pooled_validation_selected_rmse.csv", index=False)
+    pooled.to_csv(OUT_DIR / "experiment1_pooled_fixed_deterministic_rmse.csv", index=False)
     subgroup.to_csv(OUT_DIR / "experiment1_subgroup_rmse.csv", index=False)
-    pooled_by_repeat.to_csv(OUT_DIR / "experiment1_pooled_validation_selected_rmse_by_repeat.csv", index=False)
+    pooled_by_repeat.to_csv(OUT_DIR / "experiment1_pooled_fixed_deterministic_rmse_by_repeat.csv", index=False)
     subgroup_by_repeat.to_csv(OUT_DIR / "experiment1_subgroup_rmse_by_repeat.csv", index=False)
     consistency.to_csv(OUT_DIR / "experiment1_subgroup_consistency_check.csv", index=False)
 
     plot_figure(pooled, subgroup)
-    print(f"Wrote validation-selected Experiment 1 figure and tables to {OUT_DIR}")
+    print(f"Wrote fixed-model Experiment 1 figure and tables to {OUT_DIR}")
     print(f"Max pooled/subgroup consistency diff: {consistency['abs_diff'].max():.3e}")
 
 

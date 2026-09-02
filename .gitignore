@@ -4,6 +4,7 @@
 .venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
 
@@ -12,6 +13,10 @@ data/raw/
 data/deeplesion/
 data/dlt/
 outputs_deeplesion_longitudinal/
+
+# Local rerun snapshots and auxiliary analyses.
+outputs_nlstt_adaptive_uq_paper/*_backup_*/
+outputs_nlstt_adaptive_uq_paper/experiment1_progressive_followup_auxiliary/
 
 # Large trained model artifacts.
 *.pt

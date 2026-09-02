@@ -1,0 +1,5 @@
+cohort,m,N_test,selected_method,forecast_mode,rmse,ci95_half,RMSE
+pooled test,1,38,Deterministic,fixed_horizon_recent_history,0.4684525966995537,0.003879553630872861,0.4685 +/- 0.0039
+pooled test,2,38,Deterministic,fixed_horizon_recent_history,0.44455225025541656,0.011539610227805263,0.4446 +/- 0.0115
+pooled test,3,38,Deterministic,fixed_horizon_recent_history,0.4332262440205253,0.004771898334859442,0.4332 +/- 0.0048
+pooled test,4,38,Deterministic,fixed_horizon_recent_history,0.4408932699075557,0.008211013325469137,0.4409 +/- 0.0082

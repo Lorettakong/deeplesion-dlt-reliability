@@ -186,6 +186,7 @@ def pad_batch(batch: list[dict], max_points: int = 8) -> dict[str, torch.Tensor 
     t_target = torch.zeros(n, dtype=torch.float32)
     y_target = torch.zeros(n, dtype=torch.float32)
     ids = []
+    patient_ids = []
     for i, item in enumerate(batch):
         t = torch.tensor(item["t_obs"], dtype=torch.float32)
         y = torch.tensor(item["logv_obs"], dtype=torch.float32)
@@ -196,4 +197,13 @@ def pad_batch(batch: list[dict], max_points: int = 8) -> dict[str, torch.Tensor 
         t_target[i] = float(item["t_target"])
         y_target[i] = float(item["logv_target"])
         ids.append(str(item["trajectory_id"]))
-    return {"t_obs": t_obs, "y_obs": y_obs, "mask": mask, "t_target": t_target, "y_target": y_target, "ids": ids}
+        patient_ids.append(str(item.get("patient_id", item["trajectory_id"])))
+    return {
+        "t_obs": t_obs,
+        "y_obs": y_obs,
+        "mask": mask,
+        "t_target": t_target,
+        "y_target": y_target,
+        "ids": ids,
+        "patient_ids": patient_ids,
+    }

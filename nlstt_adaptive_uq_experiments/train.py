@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from .config import TrainConfig
 from .models import AnchoredCorrectionEncoder, PhysicsFeatureFusionEncoder, SparseTrajectoryEncoder, pad_batch
+from .physics import FixedGompertzReference
 
 
 class TrajectoryDataset(torch.utils.data.Dataset):
@@ -28,10 +29,19 @@ class TrainedModel:
     config: TrainConfig
     method: str
     lambda_log: pd.DataFrame | None = None
+    gompertz_reference: FixedGompertzReference | None = None
 
 
 MIXTURE_PHYSICS_NAMES = ["gompertz", "logistic", "exponential", "decay", "stable"]
-HETEROSCEDASTIC_METHODS = {"heteroscedastic", "heteroscedastic_ensemble"}
+HETEROSCEDASTIC_METHODS = {
+    "heteroscedastic",
+    "heteroscedastic_ensemble",
+    # MC Dropout must estimate the same total predictive uncertainty as the
+    # heteroscedastic ensemble: within-pass aleatoric variance plus
+    # between-pass epistemic variance.
+    "mc_dropout",
+    "fixed_pinn_uq",
+}
 
 
 def _lambda_from_uncertainty(pred_std: torch.Tensor, cfg: TrainConfig) -> torch.Tensor:
@@ -100,9 +110,17 @@ def _last_observation_residual_terms(out: dict[str, torch.Tensor], batch: dict) 
     return last_y, dy_dt
 
 
-def _gompertz_residual(out: dict[str, torch.Tensor], batch: dict) -> torch.Tensor:
+def _gompertz_residual(
+    out: dict[str, torch.Tensor],
+    batch: dict,
+    reference: FixedGompertzReference,
+) -> torch.Tensor:
     last_y, dy_dt = _last_observation_residual_terms(out, batch)
-    rhs = out["alpha"] * (out["log_k"] - 0.5 * (last_y + out["logv_pred"]))
+    # alpha and log_k are training-only constants.  In particular, the
+    # network's per-sample auxiliary heads cannot adapt them to force r=0.
+    alpha = torch.as_tensor(reference.alpha, dtype=last_y.dtype, device=last_y.device)
+    log_k = torch.as_tensor(reference.log_k, dtype=last_y.dtype, device=last_y.device)
+    rhs = alpha * (log_k - 0.5 * (last_y + out["logv_pred"]))
     return dy_dt - rhs
 
 
@@ -136,7 +154,13 @@ def _heteroscedastic_gaussian_nll(out: dict[str, torch.Tensor], batch: dict) -> 
     return torch.mean(0.5 * (log_var + sq_err * inv_var))
 
 
-def train_single_model(train_df: pd.DataFrame, cfg: TrainConfig, method: str = "fixed_pinn", seed: int = 0) -> TrainedModel:
+def train_single_model(
+    train_df: pd.DataFrame,
+    cfg: TrainConfig,
+    method: str = "fixed_pinn",
+    seed: int = 0,
+    gompertz_reference: FixedGompertzReference | None = None,
+) -> TrainedModel:
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     reliability_methods = {
@@ -158,6 +182,19 @@ def train_single_model(train_df: pd.DataFrame, cfg: TrainConfig, method: str = "
         "physics_feature_fusion_uq",
         "anchored_correction_uq",
     }
+    gompertz_methods = {
+        "fixed_pinn",
+        "fixed_pinn_uq",
+        "adaptive_pinn",
+        "inverse_adaptive_pinn",
+        "epoch_pinn",
+        "random_pinn",
+        "anchored_correction_pinn",
+    } | reliability_methods
+    if method in gompertz_methods and gompertz_reference is None:
+        raise ValueError(
+            f"Method {method!r} requires a FixedGompertzReference estimated from training data only."
+        )
     dropout = cfg.dropout if method in stochastic_methods | reliability_methods else 0.0
     if method in anchor_methods:
         model = AnchoredCorrectionEncoder(hidden_dim=cfg.hidden_dim, dropout=dropout)
@@ -192,11 +229,18 @@ def train_single_model(train_df: pd.DataFrame, cfg: TrainConfig, method: str = "
             if method in mixture_methods:
                 phys_loss, phys_residual = _mixture_physics_loss(out, batch, cfg)
             else:
-                phys_residual = _gompertz_residual(out, batch)
+                if gompertz_reference is None:
+                    # Non-Gompertz methods do not optimize this diagnostic.
+                    phys_residual = torch.zeros_like(out["logv_pred"])
+                else:
+                    phys_residual = _gompertz_residual(out, batch, gompertz_reference)
                 phys_loss = torch.mean(phys_residual**2)
             pred_std = torch.std(out["logv_pred"]).reshape(())
             reliability_parts = {"reliability": np.nan, "r_uq": np.nan, "r_sparse": np.nan, "r_phys": np.nan}
-            if method in {"no_physics"} | HETEROSCEDASTIC_METHODS:
+            # Heteroscedasticity determines the data-fit loss, not whether the
+            # physics penalty is active.  In particular, fixed_pinn_uq must
+            # retain cfg.fixed_lambda_phys while still using Gaussian NLL.
+            if method in {"no_physics", "heteroscedastic", "heteroscedastic_ensemble", "mc_dropout"}:
                 lam = 0.0
             elif method == "adaptive_pinn":
                 # During training use batch residual dispersion as a cheap uncertainty proxy.
@@ -252,7 +296,13 @@ def train_single_model(train_df: pd.DataFrame, cfg: TrainConfig, method: str = "
                 "r_phys": _safe_nanmean(epoch_r_phys),
             }
         )
-    return TrainedModel(model=model, config=cfg, method=method, lambda_log=pd.DataFrame(lambda_records))
+    return TrainedModel(
+        model=model,
+        config=cfg,
+        method=method,
+        lambda_log=pd.DataFrame(lambda_records),
+        gompertz_reference=gompertz_reference,
+    )
 
 
 def train_ensemble(

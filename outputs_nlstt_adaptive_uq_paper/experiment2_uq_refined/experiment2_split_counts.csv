@@ -1,4 +1,4 @@
-split,trajectories
-train,140
-validation,27
-test,38
+split,purpose,trajectories,patients,cohort_mode
+development,training_and_grouped_cv_model_selection,140,84,current
+calibration,patient_level_conformal_calibration_only,27,19,current
+test,final_evaluation_only,38,26,current
