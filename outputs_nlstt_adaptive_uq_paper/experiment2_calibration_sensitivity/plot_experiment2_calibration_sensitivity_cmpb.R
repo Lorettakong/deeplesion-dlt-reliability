@@ -15,16 +15,17 @@ out_dir <- dirname(script_path)
 
 display_method <- function(x) {
   x <- as.character(x)
-  x[x == "Residual Gaussian"] <- "Residual Gaussian"
+  x[x %in% c("Residual Gaussian", "Bayesian/Laplace")] <- "Gaussian residual-scale"
   x
 }
 
-method_levels <- c("Deterministic", "MC Dropout", "Deep Ensemble", "Residual Gaussian")
+method_levels <- c("Deterministic", "Gaussian Process", "MC Dropout", "Deep Ensemble", "Gaussian residual-scale")
 method_cols <- c(
   "Deterministic" = "#4C78A8",
+  "Gaussian Process" = "#B279A2",
   "MC Dropout" = "#F58518",
   "Deep Ensemble" = "#54A24B",
-  "Residual Gaussian" = "#E45756"
+  "Gaussian residual-scale" = "#E45756"
 )
 target_cols <- c("90% target" = "#4C78A8", "95% target" = "#F58518")
 
@@ -90,11 +91,11 @@ p_b <- ggplot(sens, aes(x = calibrated_mpiw_mean, y = calibrated_picp_mean,
        x = "Mean prediction interval width", y = "PICP") +
   theme_cmpb() +
   guides(
-    colour = guide_legend(nrow = 2, byrow = TRUE, override.aes = list(shape = 16, linewidth = 0)),
+    colour = guide_legend(nrow = 3, byrow = TRUE, override.aes = list(shape = 16, linewidth = 0)),
     shape = guide_legend(nrow = 1)
   ) +
   theme(
-    legend.position = c(0.62, 0.20),
+    legend.position = c(0.53, 0.23),
     legend.box = "vertical",
     legend.background = element_rect(fill = "white", colour = NA),
     legend.margin = margin(1, 1, 1, 1)

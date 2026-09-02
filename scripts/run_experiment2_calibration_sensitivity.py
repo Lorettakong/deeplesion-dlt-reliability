@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import matplotlib
@@ -11,25 +12,33 @@ import numpy as np
 import pandas as pd
 
 from nlstt_adaptive_uq_experiments.metrics import (
-    conformalize_existing_intervals,
-    residual_calibrate_intervals,
+    patient_level_conformalize_existing_intervals,
+    patient_level_residual_calibrate_intervals,
     summarize_predictions,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EXP2_DIR = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_uq_refined"
-OUT_DIR = ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_calibration_sensitivity"
+EXP2_DIR = Path(os.environ.get(
+    "DEEPLESION_EXP2_DIR",
+    ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_uq_refined",
+))
+OUT_DIR = Path(os.environ.get(
+    "DEEPLESION_CALIBRATION_SENSITIVITY_DIR",
+    ROOT / "outputs_nlstt_adaptive_uq_paper" / "experiment2_calibration_sensitivity",
+))
 
-METHOD_ORDER = ["deterministic", "mc_dropout", "deep_ensemble", "bayesian_laplace"]
+METHOD_ORDER = ["deterministic", "gaussian_process", "mc_dropout", "deep_ensemble", "bayesian_laplace"]
 METHOD_LABELS = {
     "deterministic": "Deterministic",
+    "gaussian_process": "Gaussian Process",
     "mc_dropout": "MC Dropout",
     "deep_ensemble": "Deep Ensemble",
-    "bayesian_laplace": "Residual Gaussian",
+    "bayesian_laplace": "Gaussian residual-scale",
 }
 CALIBRATION_TYPE = {
     "deterministic": "absolute_residual",
+    "gaussian_process": "normalized_residual",
     "mc_dropout": "normalized_residual",
     "deep_ensemble": "normalized_residual",
     "bayesian_laplace": "normalized_residual",
@@ -97,15 +106,27 @@ def _raw_metrics_for_method(pred: pd.DataFrame, method: str) -> dict[str, float]
     }
 
 
-def _calibrate(val_pred: pd.DataFrame, test_pred: pd.DataFrame, method: str, alpha: float) -> tuple[pd.DataFrame, float]:
+def _calibrate(
+    val_pred: pd.DataFrame,
+    test_pred: pd.DataFrame,
+    method: str,
+    alpha: float,
+) -> tuple[pd.DataFrame, float, dict[str, float | int | str]]:
     if CALIBRATION_TYPE[method] == "absolute_residual":
-        return residual_calibrate_intervals(val_pred, test_pred, alpha=alpha)
-    return conformalize_existing_intervals(val_pred, test_pred, alpha=alpha)
+        return patient_level_residual_calibrate_intervals(val_pred, test_pred, alpha=alpha)
+    return patient_level_conformalize_existing_intervals(val_pred, test_pred, alpha=alpha)
 
 
 def build_audit_table() -> pd.DataFrame:
     rows = []
-    for repeat in [1, 2, 3]:
+    repeat_ids = sorted(
+        int(path.name.removeprefix("repeat"))
+        for path in EXP2_DIR.glob("repeat*")
+        if path.is_dir() and path.name.removeprefix("repeat").isdigit()
+    )
+    if not repeat_ids:
+        raise FileNotFoundError(f"No repeat directories found in {EXP2_DIR}")
+    for repeat in repeat_ids:
         for m in [1, 2, 3, 4]:
             task_dir = EXP2_DIR / f"repeat{repeat}" / f"m{m}"
             for method in METHOD_ORDER:
@@ -119,11 +140,14 @@ def build_audit_table() -> pd.DataFrame:
                 raw = _raw_metrics_for_method(test_pred, method)
 
                 for alpha in ALPHAS:
-                    calibrated, q = _calibrate(val_pred, test_pred, method, alpha=alpha)
+                    calibrated, q, calibration_metadata = _calibrate(
+                        val_pred, test_pred, method, alpha=alpha
+                    )
                     cal = summarize_predictions(calibrated)
                     n_val = len(val_pred)
                     n_test = len(test_pred)
-                    q_level, q_rank = _finite_sample_quantile_level(n_val, alpha)
+                    q_level = float(calibration_metadata["conformal_level"])
+                    q_rank = int(calibration_metadata["conformal_rank"])
                     covered = (
                         (calibrated["logv_target"].to_numpy(float) >= calibrated["logv_lower"].to_numpy(float))
                         & (calibrated["logv_target"].to_numpy(float) <= calibrated["logv_upper"].to_numpy(float))
@@ -140,6 +164,7 @@ def build_audit_table() -> pd.DataFrame:
                             "alpha": alpha,
                             "nominal_coverage": 1.0 - alpha,
                             "n_val": n_val,
+                            "n_calibration_patients": int(calibration_metadata["n_calibration_patients"]),
                             "n_test": n_test,
                             "finite_sample_quantile_level": q_level,
                             "finite_sample_quantile_rank": q_rank,
@@ -174,7 +199,7 @@ def summarize_audit(audit: pd.DataFrame) -> pd.DataFrame:
         "picp_wilson95_low",
         "picp_wilson95_high",
     ]
-    group_cols = ["m", "method", "calibration_type", "alpha", "nominal_coverage", "n_val", "n_test", "finite_sample_quantile_level", "finite_sample_quantile_rank"]
+    group_cols = ["m", "method", "calibration_type", "alpha", "nominal_coverage", "n_val", "n_calibration_patients", "n_test", "finite_sample_quantile_level", "finite_sample_quantile_rank"]
     for keys, group in audit.groupby(group_cols, sort=False):
         row = dict(zip(group_cols, keys))
         row["n_repeats"] = int(group["repeat"].nunique())
