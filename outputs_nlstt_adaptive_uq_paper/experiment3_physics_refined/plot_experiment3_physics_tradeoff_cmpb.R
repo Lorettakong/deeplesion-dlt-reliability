@@ -23,8 +23,9 @@ to_long <- function(path, metric) {
   lambda_cols <- setdiff(names(dat), "m")
   rows <- lapply(lambda_cols, function(col) {
     parsed <- parse_pm(dat[[col]])
-    lambda_label <- if (col == "No Regularization") "lambda = 0" else gsub("lambda=", "lambda = ", col)
-    lambda_value <- if (col == "No Regularization") 0 else as.numeric(sub("lambda=", "", col))
+    is_unregularized <- col %in% c("No Regularization", "No Physics")
+    lambda_label <- if (is_unregularized) "lambda = 0" else gsub("lambda=", "lambda = ", col)
+    lambda_value <- if (is_unregularized) 0 else as.numeric(sub("lambda=", "", col))
     data.frame(
       m = dat$m,
       lambda = lambda_label,
@@ -88,7 +89,7 @@ draw_figure <- function() {
   plot(
     NA, xlim = c(0.85, 4.15), ylim = c(0.38, 1.0),
     xlab = "Observed CT visits (m)", ylab = "RMSE",
-    xaxt = "n", main = "A. RMSE by weight",
+    xaxt = "n", main = "A. RMSE by regularization weight",
     cex.main = 0.88
   )
   axis(1, at = 1:4)
@@ -112,7 +113,7 @@ draw_figure <- function() {
   plot(
     NA, xlim = c(0.85, 4.15), ylim = c(1e-3, 0.65), log = "y",
     xlab = "Observed CT visits (m)", ylab = "Mean absolute residual",
-    xaxt = "n", main = "B. Residual by weight",
+    xaxt = "n", main = "B. Gompertz-style residual by regularization weight",
     cex.main = 0.88
   )
   axis(1, at = 1:4)

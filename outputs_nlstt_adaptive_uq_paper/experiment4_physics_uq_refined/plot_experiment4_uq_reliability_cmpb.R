@@ -20,13 +20,13 @@ parse_pm <- function(x) {
 
 make_long <- function(path, lambda_label) {
   raw <- read.csv(path, check.names = FALSE)
-  metrics <- c("RMSE", "NLL", "ECE", "Gompertz-style residual")
+  metrics <- c("RMSE", "Interval score", "WIS (one level)", "Gompertz-style residual")
   rows <- list()
   for (metric in metrics) {
     parsed <- parse_pm(raw[[metric]])
     method_group <- ifelse(
-      grepl("^No Regularization", raw$Method),
-      "No regularization",
+      grepl("^(No Regularization|No Physics)", raw$Method),
+      "Unregularized MC Dropout (lambda = 0)",
       lambda_label
     )
     rows[[metric]] <- data.frame(
@@ -44,23 +44,23 @@ make_long <- function(path, lambda_label) {
 d1 <- make_long(lambda1_path, "lambda = 1")
 d10 <- make_long(lambda10_path, "lambda = 10")
 plot_data <- rbind(
-  d1[d1$method_group %in% c("No regularization", "lambda = 1"), ],
+  d1[d1$method_group %in% c("Unregularized MC Dropout (lambda = 0)", "lambda = 1"), ],
   d10[d10$method_group == "lambda = 10", ]
 )
 plot_data$method_group <- factor(
   plot_data$method_group,
-  levels = c("No regularization", "lambda = 1", "lambda = 10")
+  levels = c("Unregularized MC Dropout (lambda = 0)", "lambda = 1", "lambda = 10")
 )
 
 source_out <- file.path(out_dir, "figure10_cmpb_source_data.csv")
 write.csv(plot_data, source_out, row.names = FALSE)
 
 palette <- c(
-  "No regularization" = "#1F77B4",
+  "Unregularized MC Dropout (lambda = 0)" = "#1F77B4",
   "lambda = 1" = "#FF7F0E",
   "lambda = 10" = "#2CA02C"
 )
-shape_map <- c("No regularization" = 16, "lambda = 1" = 17, "lambda = 10" = 15)
+shape_map <- c("Unregularized MC Dropout (lambda = 0)" = 16, "lambda = 1" = 17, "lambda = 10" = 15)
 
 draw_errorbar <- function(x, lo, hi, col, log_y = FALSE, width = 0.045) {
   if (log_y) {
@@ -127,15 +127,13 @@ draw_figure <- function() {
     ylim = c(0.40, 1.00), legend_pos = "topright"
   )
   draw_metric_panel(
-    "NLL", "B. Calibrated NLL", "NLL",
-    ylim = c(0.72, 1.64)
+    "Interval score", "B. Conformal interval score", "Interval score"
   )
   draw_metric_panel(
-    "ECE", "C. Calibrated ECE", "ECE",
-    ylim = c(0.045, 0.18)
+    "WIS (one level)", "C. Conformal WIS", "WIS"
   )
   draw_metric_panel(
-    "Gompertz-style residual", "D. Trajectory residual", "Mean absolute residual",
+    "Gompertz-style residual", "D. Gompertz-style residual", "Mean absolute residual",
     ylim = c(0.0025, 0.65), log_y = TRUE
   )
 }

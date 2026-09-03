@@ -266,24 +266,24 @@ def make_figure() -> Path:
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
     ax = axes[0, 0]
-    ax.plot(ms, no["interval_score_mean"], marker="o", label="No Physics + UQ")
-    ax.plot(ms, fx["interval_score_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
+    ax.plot(ms, no["interval_score_mean"], marker="o", label=r"Unregularized MC Dropout ($\lambda=0$)")
+    ax.plot(ms, fx["interval_score_mean"], marker="o", label=r"Gompertz-inspired MC Dropout ($\lambda=1$)")
     ax.set_title("A. Conformal interval score")
     ax.set_xlabel("Observed CT visits (m)")
     ax.set_ylabel("Interval score (lower is better)")
     ax.legend(frameon=False)
 
     ax = axes[0, 1]
-    ax.plot(ms, no["wis_mean"], marker="o", label="No Physics + UQ")
-    ax.plot(ms, fx["wis_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
+    ax.plot(ms, no["wis_mean"], marker="o", label=r"Unregularized MC Dropout ($\lambda=0$)")
+    ax.plot(ms, fx["wis_mean"], marker="o", label=r"Gompertz-inspired MC Dropout ($\lambda=1$)")
     ax.set_title("B. Conformal WIS")
     ax.set_xlabel("Observed CT visits (m)")
     ax.set_ylabel("WIS (lower is better)")
     ax.legend(frameon=False)
 
     ax = axes[1, 0]
-    ax.semilogy(ms, no["resid_mean"], marker="o", label="No Physics + UQ")
-    ax.semilogy(ms, fx["resid_mean"], marker="o", label="Gompertz-reg lambda=1 + UQ")
+    ax.semilogy(ms, no["resid_mean"], marker="o", label=r"Unregularized MC Dropout ($\lambda=0$)")
+    ax.semilogy(ms, fx["resid_mean"], marker="o", label=r"Gompertz-inspired MC Dropout ($\lambda=1$)")
     ax.set_title("C. Gompertz-style residual")
     ax.set_xlabel("Observed CT visits (m)")
     ax.set_ylabel("Mean absolute residual, log scale")
@@ -304,8 +304,8 @@ def make_figure() -> Path:
         )
     x = np.arange(3)
     width = 0.34
-    ax.bar(x - width / 2, deltas[0], width, label="lambda=1")
-    ax.bar(x + width / 2, deltas[1], width, label="lambda=10")
+    ax.bar(x - width / 2, deltas[0], width, label=r"$\lambda=1$")
+    ax.bar(x + width / 2, deltas[1], width, label=r"$\lambda=10$")
     ax.set_xticks(x)
     ax.set_xticklabels(["RMSE", "Interval score", "WIS"])
     ax.set_ylim(0, 4.4)

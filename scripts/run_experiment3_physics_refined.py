@@ -31,6 +31,13 @@ LAMBDA_LABELS = {
     10.0: "lambda=10",
     100.0: "lambda=100",
 }
+PLOT_LABELS = {
+    0.0: r"$\lambda=0$",
+    0.1: r"$\lambda=0.1$",
+    1.0: r"$\lambda=1$",
+    10.0: r"$\lambda=10$",
+    100.0: r"$\lambda=100$",
+}
 
 
 def _seed_summary(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -149,9 +156,9 @@ def _plot(summary: pd.DataFrame) -> None:
             marker="o",
             linewidth=2,
             capsize=3,
-            label=LAMBDA_LABELS[lam],
+            label=PLOT_LABELS[lam],
         )
-    ax.set_title("A. RMSE by fixed physics weight")
+    ax.set_title("A. RMSE by regularization weight")
     ax.set_xlabel("Observed CT visits (m)")
     ax.set_ylabel("RMSE")
     ax.set_xticks([1, 2, 3, 4])
@@ -167,9 +174,9 @@ def _plot(summary: pd.DataFrame) -> None:
             marker="o",
             linewidth=2,
             capsize=3,
-            label=LAMBDA_LABELS[lam],
+            label=PLOT_LABELS[lam],
         )
-    ax.set_title("B. Physics residual by fixed weight")
+    ax.set_title("B. Gompertz-style residual by regularization weight")
     ax.set_xlabel("Observed CT visits (m)")
     ax.set_ylabel("Mean absolute Gompertz residual")
     ax.set_xticks([1, 2, 3, 4])
@@ -189,7 +196,7 @@ def _plot(summary: pd.DataFrame) -> None:
             alpha=0.85,
         )
     for lam in LAMBDA_VALUES:
-        ax.scatter([], [], color=colors[lam], label=LAMBDA_LABELS[lam])
+        ax.scatter([], [], color=colors[lam], label=PLOT_LABELS[lam])
     ax.set_title("C. Accuracy-consistency trade-off")
     ax.set_xlabel("RMSE")
     ax.set_ylabel("Mean absolute Gompertz residual")
