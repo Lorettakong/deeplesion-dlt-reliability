@@ -2,6 +2,7 @@ quantity,value
 Connected components,2117
 Components with graph/study ambiguity,0
 Branching nodes (degree > 2),0
+Components affected by repeated pair annotations,2117
 Repeated pair annotations,3888
 Studies with multiple candidate nodes,0
 Trajectories excluded by future-size/smoothness rules,0

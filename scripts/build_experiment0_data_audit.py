@@ -85,6 +85,10 @@ def main() -> None:
                 {"quantity": "Connected components", "value": len(graph_audit)},
                 {"quantity": "Components with graph/study ambiguity", "value": int(graph_audit["ambiguous_component"].sum())},
                 {"quantity": "Branching nodes (degree > 2)", "value": int(graph_audit["branching_node_count_degree_gt2"].sum())},
+                {
+                    "quantity": "Components affected by repeated pair annotations",
+                    "value": int((graph_audit["duplicate_pair_annotations"] > 0).sum()),
+                },
                 {"quantity": "Repeated pair annotations", "value": int(graph_audit["duplicate_pair_annotations"].sum())},
                 {"quantity": "Studies with multiple candidate nodes", "value": int(graph_audit["studies_with_multiple_candidate_nodes"].sum())},
                 {"quantity": "Trajectories excluded by future-size/smoothness rules", "value": 0},
