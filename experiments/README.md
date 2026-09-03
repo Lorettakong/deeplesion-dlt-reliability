@@ -7,8 +7,8 @@ entry point or released output folder.
 |---|---|
 | Experiment 0: data quality audit | `scripts/build_experiment0_data_audit.py`; `outputs_nlstt_adaptive_uq_paper/experiment0_data_quality_audit/` |
 | Experiment 1: follow-up density | `scripts/plot_experiment1_followup_density.py`; `outputs_nlstt_adaptive_uq_paper/experiment1_followup_density/` |
-| Experiment 1: traditional baselines | `scripts/run_experiment1_traditional_baselines.py`; `outputs_nlstt_adaptive_uq_paper/experiment1_traditional_baselines/` |
-| Experiment 2: UQ method comparison | `scripts/run_experiment2_uq_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment2_uq_refined/` |
+| Experiment 1: traditional baselines (including a per-trajectory temporal GP) | `scripts/run_experiment1_traditional_baselines.py`; `outputs_nlstt_adaptive_uq_paper/experiment1_traditional_baselines/` |
+| Experiment 2: UQ method comparison (including a cohort-level feature GP) | `scripts/run_experiment2_uq_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment2_uq_refined/` |
 | Experiment 2: calibration sensitivity | `scripts/run_experiment2_calibration_sensitivity.py`; `outputs_nlstt_adaptive_uq_paper/experiment2_calibration_sensitivity/` |
 | Experiment 3: regularization-weight sensitivity | `scripts/run_experiment3_physics_refined.py`; `outputs_nlstt_adaptive_uq_paper/experiment3_physics_refined/` |
 | Measurement-proxy sensitivity | `scripts/run_measurement_proxy_sensitivity.py`; `outputs_nlstt_adaptive_uq_paper/measurement_proxy_sensitivity/` |

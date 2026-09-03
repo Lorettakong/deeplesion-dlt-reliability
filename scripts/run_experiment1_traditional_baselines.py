@@ -115,6 +115,7 @@ def predict_ridge(train_df: pd.DataFrame, test_df: pd.DataFrame, alpha: float) -
 
 
 def gp_predict_one(t_obs: np.ndarray, y_obs: np.ndarray, t_target: float, length_scale: float, noise: float) -> float:
+    """Fit one temporal GP to one trajectory; no information is pooled across patients."""
     kernel = ConstantKernel(1.0, constant_value_bounds="fixed") * RBF(length_scale=length_scale, length_scale_bounds="fixed") + WhiteKernel(
         noise_level=noise, noise_level_bounds="fixed"
     )

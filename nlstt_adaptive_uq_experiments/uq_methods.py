@@ -31,7 +31,7 @@ def _gp_features(frame: pd.DataFrame) -> np.ndarray:
 
 
 def fit_gaussian_process(train_frame: pd.DataFrame, seed: int = 0) -> Pipeline:
-    """Exact small-sample GP baseline with learned signal, length scale, and noise."""
+    """Cohort-level GP on standardized history features for Experiment 2."""
     x = _gp_features(train_frame)
     y = train_frame["logv_target"].to_numpy(float)
     kernel = (
