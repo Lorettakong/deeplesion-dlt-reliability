@@ -343,6 +343,10 @@ def write_report(pred: pd.DataFrame, fig_path: Path) -> Path:
         "# Experiment 5: Calibration Diagnostics",
         "",
         "This diagnostic experiment uses the m=4 calibrated predictions from Experiment 2.",
+        "Subgroup and target-magnitude coverage intervals are exact two-sided "
+        "Clopper-Pearson 95% confidence intervals computed from one independent "
+        "test-set prediction per trajectory; repeated model fits are not counted "
+        "as additional patients.",
         "",
         "## Table 5A. m=4 diagnostic summary",
         "",

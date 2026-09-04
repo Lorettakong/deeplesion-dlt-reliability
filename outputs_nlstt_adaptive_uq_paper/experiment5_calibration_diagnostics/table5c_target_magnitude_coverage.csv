@@ -2,9 +2,9 @@ Method,Target magnitude,analysis,n_test_trajectories,covered_trajectories,Covera
 Deterministic,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9337,0.2414
 Deterministic,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9337,0.4066
 Deterministic,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9337,0.4176
-Gaussian Process,middle y(T4),exploratory,14,14,14/14,1.0000,0.7684-1.0000,2.9483,0.2607
-Gaussian Process,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9529,0.3880
-Gaussian Process,low y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9564,0.4189
+Cohort-level Feature GP,middle y(T4),exploratory,14,14,14/14,1.0000,0.7684-1.0000,2.9483,0.2607
+Cohort-level Feature GP,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9529,0.3880
+Cohort-level Feature GP,low y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,2.9564,0.4189
 MC Dropout,middle y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.8417,0.2317
 MC Dropout,high y(T4),exploratory,12,12,12/12,1.0000,0.7354-1.0000,3.0501,0.3557
 MC Dropout,low y(T4),exploratory,13,13,13/13,1.0000,0.7529-1.0000,2.9693,0.4300
