@@ -44,6 +44,7 @@ CALIBRATION_TYPE = {
     "bayesian_laplace": "normalized_residual",
 }
 ALPHAS = [0.10, 0.05]
+N_CLUSTER_BOOTSTRAP = 5000
 
 
 def _wilson_interval(k: int, n: int, z: float = 1.959963984540054) -> tuple[float, float]:
@@ -54,6 +55,32 @@ def _wilson_interval(k: int, n: int, z: float = 1.959963984540054) -> tuple[floa
     center = (phat + z**2 / (2.0 * n)) / denom
     half = z * np.sqrt((phat * (1.0 - phat) + z**2 / (4.0 * n)) / n) / denom
     return float(max(0.0, center - half)), float(min(1.0, center + half))
+
+
+def _patient_cluster_bootstrap_picp_interval(
+    pred: pd.DataFrame,
+    *,
+    n_boot: int = N_CLUSTER_BOOTSTRAP,
+    seed: int,
+) -> tuple[float, float]:
+    """Percentile CI from resampling patients and retaining all their trajectories."""
+    if "patient_id" not in pred.columns:
+        raise KeyError("patient_id is required for patient-level cluster bootstrap")
+    covered = (
+        (pred["logv_target"].to_numpy(float) >= pred["logv_lower"].to_numpy(float))
+        & (pred["logv_target"].to_numpy(float) <= pred["logv_upper"].to_numpy(float))
+    )
+    patients = pred["patient_id"].drop_duplicates().to_numpy()
+    patient_rows = [
+        np.flatnonzero(pred["patient_id"].to_numpy() == patient_id)
+        for patient_id in patients
+    ]
+    covered_counts = np.asarray([covered[rows].sum() for rows in patient_rows], dtype=float)
+    trajectory_counts = np.asarray([len(rows) for rows in patient_rows], dtype=float)
+    rng = np.random.default_rng(seed)
+    sampled = rng.integers(0, len(patients), size=(n_boot, len(patients)))
+    boot = covered_counts[sampled].sum(axis=1) / trajectory_counts[sampled].sum(axis=1)
+    return float(np.quantile(boot, 0.025)), float(np.quantile(boot, 0.975))
 
 
 def _format_mean_ci(mean: float, half: float) -> str:
@@ -154,6 +181,12 @@ def build_audit_table() -> pd.DataFrame:
                     )
                     k = int(covered.sum())
                     wilson_low, wilson_high = _wilson_interval(k, n_test)
+                    method_index = METHOD_ORDER.index(method)
+                    bootstrap_seed = 820000 + repeat * 1000 + m * 100 + method_index * 10 + int(alpha * 100)
+                    cluster_low, cluster_high = _patient_cluster_bootstrap_picp_interval(
+                        calibrated,
+                        seed=bootstrap_seed,
+                    )
                     rows.append(
                         {
                             "repeat": repeat,
@@ -181,6 +214,10 @@ def build_audit_table() -> pd.DataFrame:
                             "covered_count": k,
                             "picp_wilson95_low": wilson_low,
                             "picp_wilson95_high": wilson_high,
+                            "picp_patient_cluster_bootstrap95_low": cluster_low,
+                            "picp_patient_cluster_bootstrap95_high": cluster_high,
+                            "n_test_patients": int(calibrated["patient_id"].nunique()),
+                            "n_cluster_bootstrap": N_CLUSTER_BOOTSTRAP,
                         }
                     )
     return pd.DataFrame(rows)
@@ -198,6 +235,8 @@ def summarize_audit(audit: pd.DataFrame) -> pd.DataFrame:
         "calibrated_nll",
         "picp_wilson95_low",
         "picp_wilson95_high",
+        "picp_patient_cluster_bootstrap95_low",
+        "picp_patient_cluster_bootstrap95_high",
     ]
     group_cols = ["m", "method", "calibration_type", "alpha", "nominal_coverage", "n_val", "n_calibration_patients", "n_test", "finite_sample_quantile_level", "finite_sample_quantile_rank"]
     for keys, group in audit.groupby(group_cols, sort=False):
@@ -241,8 +280,8 @@ def plot_m4_sensitivity(summary: pd.DataFrame) -> None:
     for offset, alpha in [(-width / 2, 0.10), (width / 2, 0.05)]:
         sub = m4[m4["alpha"] == alpha].set_index("method").loc[[METHOD_LABELS[m] for m in METHOD_ORDER]]
         ax.bar(x + offset, sub["calibrated_picp_mean"], width=width, label=f"{int((1-alpha)*100)}% target")
-        yerr_low = np.clip(sub["calibrated_picp_mean"] - sub["picp_wilson95_low_mean"], 0.0, None)
-        yerr_high = np.clip(sub["picp_wilson95_high_mean"] - sub["calibrated_picp_mean"], 0.0, None)
+        yerr_low = np.clip(sub["calibrated_picp_mean"] - sub["picp_patient_cluster_bootstrap95_low_mean"], 0.0, None)
+        yerr_high = np.clip(sub["picp_patient_cluster_bootstrap95_high_mean"] - sub["calibrated_picp_mean"], 0.0, None)
         ax.errorbar(
             x + offset,
             sub["calibrated_picp_mean"],
@@ -255,7 +294,7 @@ def plot_m4_sensitivity(summary: pd.DataFrame) -> None:
     ax.axhline(0.95, color="black", linestyle="--", linewidth=1, alpha=0.45)
     ax.axhline(0.90, color="black", linestyle=":", linewidth=1, alpha=0.45)
     ax.set_ylim(0.75, 1.03)
-    ax.set_title("A. m=4 calibrated PICP with Wilson CI")
+    ax.set_title("A. m=4 calibrated PICP with patient-cluster bootstrap CI")
     ax.set_ylabel("PICP")
     ax.set_xticks(x)
     ax.set_xticklabels([METHOD_LABELS[m] for m in METHOD_ORDER], rotation=20, ha="right")

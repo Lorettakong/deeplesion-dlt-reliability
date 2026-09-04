@@ -65,7 +65,8 @@ p_a <- ggplot(sens, aes(x = method, y = calibrated_picp_mean, fill = target)) +
   geom_hline(yintercept = 0.95, linetype = "dashed", linewidth = 0.35, colour = "grey35") +
   geom_col(position = position_dodge(width = 0.72), width = 0.58, colour = "white", linewidth = 0.2) +
   geom_errorbar(
-    aes(ymin = picp_wilson95_low_mean, ymax = picp_wilson95_high_mean),
+    aes(ymin = picp_patient_cluster_bootstrap95_low_mean,
+        ymax = picp_patient_cluster_bootstrap95_high_mean),
     position = position_dodge(width = 0.72),
     width = 0.14,
     linewidth = 0.35,
@@ -74,7 +75,7 @@ p_a <- ggplot(sens, aes(x = method, y = calibrated_picp_mean, fill = target)) +
   scale_fill_manual(values = target_cols) +
   scale_y_continuous(breaks = seq(0.75, 1.00, 0.05), expand = expansion(mult = c(0, 0.02))) +
   coord_cartesian(ylim = c(0.75, 1.02)) +
-  labs(title = "A. m = 4 calibrated PICP with Wilson CI", x = NULL, y = "PICP") +
+  labs(title = "A. m = 4 calibrated PICP with patient-cluster bootstrap CI", x = NULL, y = "PICP") +
   theme_cmpb() +
   theme(axis.text.x = element_text(angle = 22, hjust = 1),
         legend.position = c(0.20, 0.14))
