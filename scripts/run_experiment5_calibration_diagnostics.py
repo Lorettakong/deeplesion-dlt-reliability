@@ -20,7 +20,7 @@ OUT = OUTPUT_ROOT / "experiment5_calibration_diagnostics"
 METHODS = ["deterministic", "gaussian_process", "mc_dropout", "deep_ensemble", "bayesian_laplace"]
 LABELS = {
     "deterministic": "Deterministic",
-    "gaussian_process": "Gaussian Process",
+    "gaussian_process": "Cohort-level Feature GP",
     "mc_dropout": "MC Dropout",
     "deep_ensemble": "Deep Ensemble",
     "bayesian_laplace": "Gaussian residual-scale",

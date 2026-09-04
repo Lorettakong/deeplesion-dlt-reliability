@@ -15,14 +15,15 @@ out_dir <- dirname(script_path)
 
 display_method <- function(x) {
   x <- as.character(x)
+  x[x == "Gaussian Process"] <- "Cohort-level Feature GP"
   x[x %in% c("Residual Gaussian", "Bayesian/Laplace")] <- "Gaussian residual-scale"
   x
 }
 
-method_levels <- c("Deterministic", "Gaussian Process", "MC Dropout", "Deep Ensemble", "Gaussian residual-scale")
+method_levels <- c("Deterministic", "Cohort-level Feature GP", "MC Dropout", "Deep Ensemble", "Gaussian residual-scale")
 method_cols <- c(
   "Deterministic" = "#4C78A8",
-  "Gaussian Process" = "#B279A2",
+  "Cohort-level Feature GP" = "#B279A2",
   "MC Dropout" = "#F58518",
   "Deep Ensemble" = "#54A24B",
   "Gaussian residual-scale" = "#E45756"

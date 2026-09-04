@@ -40,13 +40,15 @@ parse_interval <- function(x) {
 
 display_method <- function(x) {
   x <- as.character(x)
+  x[x == "Gaussian Process"] <- "Cohort-level Feature GP"
   x[x == "Residual Gaussian"] <- "Residual Gaussian"
   x
 }
 
-method_levels <- c("Deterministic", "MC Dropout", "Deep Ensemble", "Residual Gaussian")
+method_levels <- c("Deterministic", "Cohort-level Feature GP", "MC Dropout", "Deep Ensemble", "Residual Gaussian")
 method_cols <- c(
   "Deterministic" = "#4C78A8",
+  "Cohort-level Feature GP" = "#B279A2",
   "MC Dropout" = "#F58518",
   "Deep Ensemble" = "#54A24B",
   "Residual Gaussian" = "#E45756"

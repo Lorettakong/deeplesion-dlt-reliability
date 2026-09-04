@@ -10,18 +10,20 @@ if (length(file_arg)) {
 root_dir <- normalizePath(file.path(out_dir, ".."), mustWork = TRUE)
 pred_dir <- file.path(root_dir, "experiment2_uq_refined")
 
-method_ids <- c("deterministic", "mc_dropout", "deep_ensemble", "bayesian_laplace")
-method_labels <- c("Deterministic", "MC Dropout", "Deep Ensemble", "Residual Gaussian")
+method_ids <- c("deterministic", "gaussian_process", "mc_dropout", "deep_ensemble", "bayesian_laplace")
+method_labels <- c("Deterministic", "Cohort-level Feature GP", "MC Dropout", "Deep Ensemble", "Residual Gaussian")
 names(method_labels) <- method_ids
 
 palette <- c(
   "Deterministic" = "#2F6FB0",
+  "Cohort-level Feature GP" = "#B279A2",
   "MC Dropout" = "#E9842A",
   "Deep Ensemble" = "#4C9A3F",
   "Residual Gaussian" = "#C83F49"
 )
 
 map_method <- function(x) {
+  x <- gsub("Gaussian Process", "Cohort-level Feature GP", x, fixed = TRUE)
   x <- gsub("Residual Gaussian", "Residual Gaussian", x, fixed = TRUE)
   x
 }
